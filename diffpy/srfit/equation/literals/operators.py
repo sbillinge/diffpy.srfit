@@ -23,16 +23,6 @@ evaluated by a Visitor. Thus, a single onOperator method exists in the Visitor
 base class. Other Operators can be derived from Operator (see AdditionOperator),
 but they all identify themselves with the Visitor.onOperator method.
 
-Operators can be made to operate conditionally by specifying tags.  When applied
-to a Partition, only parts of the Partition that contain one of the tags
-specified by the Operator will be operated upon.  If the operator specifies no
-tags, then it will work on all parts of a Partition.
-
-Operators have a 'setCombine' method that will tell an Evaluator whether a
-Partition can be combined after the operation. By default they cannot. The
-CombineOperator will combine a Partition but leave other literals unchanged.
-See the Partition module for combination rules.
-
 """
 
 
@@ -49,19 +39,15 @@ class Operator(Literal, OperatorABC):
     information alone.
 
     Attributes
-    args    --  List of Literal arguments, set with addLiteral
-    clicker --  A Clicker instance for recording change in the dependent
-                arguments.
+    args    --  List of Literal arguments, set with 'addLiteral'
     name    --  A name for this operator. e.g. "add" or "sin"
-    nin     --  Number of inputs (negative means this is variable)
+    nin     --  Number of inputs (<1 means this is variable)
     nout    --  Number of outputs
     operation   --  Function that performs the operation. e.g. numpy.add or
     symbol  --  The symbolic representation. e.g. "+" or "sin"
                 numpy.sin
-    _tags   --  Set of tags for this operator
-    _cancombine --  Indicates whether this operator can combine a Partition.
-    _proxy      --  The Argument, Partition or value that this Operator results
-                    in (used by the Evaluator).
+    _value  --  The value of the Argument. Modified with 'setValue'.
+    value   --  Property for 'getValue' and 'setValue'.
 
     """
 
@@ -71,30 +57,22 @@ class Operator(Literal, OperatorABC):
     nout = None
     operation = None
     symbol = None
-    _tags = None
-    _cancombine = None
-    _proxy = None
+    _value = None
 
-    def __init__(self, name = None, symbol = None, operation = None,
-            nin = 2, nout = 1, tags = []):
+    def __init__(self, name = None, symbol = None, operation = None, nin = 2,
+            nout = 1):
         """Initialization."""
-        Literal.__init__(self)
-        self.name = name
+        Literal.__init__(self, name)
         self.symbol = symbol
         self.nin = nin
         self.nout = nout
         self.args = []
         self.operation = operation
-        self._tags = set(tags)
-        self._cancombine = False
-        # used by Evaluator
-        self._proxy = None
         return
 
     def identify(self, visitor):
         """Identify self to a visitor."""
-        visitor.onOperator(self)
-        return
+        return visitor.onOperator(self)
 
     def addLiteral(self, literal):
         """Add a literal to this operator.
@@ -102,43 +80,41 @@ class Operator(Literal, OperatorABC):
         Note that order of operation matters. The first literal added is the
         leftmost argument. The last is the rightmost.
 
+        Raises ValueError if the literal causes a self-reference.
+
         """
+        # Make sure we don't have self-reference
+        self._loopCheck(literal)
         self.args.append(literal)
-        self.clicker.addSubject(literal.clicker)
+        literal.addObserver(self._flush)
+        self._flush(None)
         return
 
-    def setCombine(self, combine=True):
-        """Set whether this operator can combine Partitions.
+    def getValue(self):
+        """Get or evaluate the value of the operator."""
+        if self._value is not None:
+            return self._value
 
-        By default, operators cannot combine Partitions.
+        vals = [l.value for l in self.args]
+        return self.operation(*vals)
 
-        combine --  combine flag (default True)
+    def _loopCheck(self, literal):
+        """Check if a literal causes self-reference."""
+        if literal is self:
+            raise ValueError("'%s' causes self-reference"%literal)
 
-        """
-        if combine != self._cancombine:
-            self._cancombine = combine
-            self._proxy = None
-            self.clicker.click()
-        return
-
-    def addTags(self, *args):
-        """Add tags to the operator."""
-        map(self._tags.add, args)
-        self._proxy = None
-        self.clicker.click()
-        return
-
-    def clearTags(self):
-        """Clear all tags."""
-        self._tags = set()
-        self._proxy = None
-        self.clicker.click()
+        # Check to see if I am a dependency of the literal.
+        if hasattr(literal, "args"):
+            for l in literal.args:
+                self._loopCheck(l)
         return
 
     def __str__(self):
         if self.name:
             return "Operator(" + self.name + ")"
         return self.__repr__()
+
+    value = property(getValue)
 
 
 # Some specified operators
@@ -282,23 +258,6 @@ class UFuncOperator(Operator):
         self.nin = op.nin
         self.nout = op.nout
         self.operation = op
-        return
-
-class CombineOperator(Operator):
-    """Operator for combining Partitions.
-
-    This acts as the identity function (f(x) = x) to non-Partition literals.
-
-    """
-
-    def __init__(self):
-        """Initialization."""
-        Operator.__init__(self)
-        self.name = "combine"
-        self.symbol = "combine"
-        self.nin = 1
-        self.operation = lambda x: x
-        self._cancombine = True
         return
 
 class ListOperator(Operator):

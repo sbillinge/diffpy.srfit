@@ -42,16 +42,13 @@ See the class documentation for more information.
 # this to break the evaluation into smaller problems that can be run in
 # parallel.
 
-from .visitors import Evaluator
 from .visitors import Validator
 from .visitors import ArgFinder
-from .visitors import PartFinder
 from .visitors import Swapper
-from .literals import Generator
 from .literals import Argument
 from .literals import Operator
 
-class Equation(Generator):
+class Equation(Operator):
     """Class for holding and evaluating a Literal tree.
 
     Instances have attributes that are the non-const Arguments of the tree
