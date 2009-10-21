@@ -56,26 +56,29 @@ class Equation(object):
     Attributes
     root    --  The root Literal of the equation tree
     argdict --  An OrderedDict of Arguments from the root.
-    name    --  A name for this Equation.
+    args    --  Property that gets the values of argdict.
 
     """
 
-    def __init__(self, root=None, name=None):
+    def __init__(self, root=None):
         """Initialize.
 
         root    --  The root node of the Literal tree (default None). If root
                     is not passed here, you must call the 'setRoot' method to
                     set or change the root node.
-        name    --  The name of this Equation (optional, default None)
 
         """
         # Set required Operator data
-        self.name = None
         self.root = None
         self.argdict = OrderedDict()
         if root is not None:
             self.setRoot(root)
         return
+
+    def _getArgs(self):
+        return self.argdict.values()
+
+    args = property(_getArgs)
 
     def __getattr__(self, name):
         """Gives access to the Arguments as attributes."""
@@ -114,11 +117,10 @@ class Equation(object):
 
         """
         # Process args
-        myargs = self.argdict.values()
         for idx, val in enumerate(args):
             if idx > len(self.argdict):
                 raise ValueError("Too many arguments")
-            arg = myargs[idx]
+            arg = self.args[idx]
             arg.setValue(val)
 
         # Process kw

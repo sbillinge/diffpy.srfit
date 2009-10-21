@@ -43,7 +43,7 @@ class TestEquation(unittest.TestCase):
 
         # Make the equation
         eq = Equation(mult2)
-        args = eq.argdict.values()
+        args = eq.args
         self.assertTrue(v1 in args)
         self.assertTrue(v2 in args)
         self.assertTrue(v3 in args)
@@ -65,7 +65,7 @@ class TestEquation(unittest.TestCase):
         # Try some swapping
         eq.swap(v4, v1)
         self.assertEqual(15, eq()) # 15 = 2.5*(2+1)*(2-0)
-        args = eq.argdict.values()
+        args = eq.args
         self.assertTrue(v4 not in args)
 
         # Try to create a dependency loop

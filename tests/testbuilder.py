@@ -90,53 +90,6 @@ class TestEquationParser(unittest.TestCase):
         self.assertEquals(eq2.args, [eq2.c, eq2.sigma])
 
         # Equation with partition
-        p1 = literals.Partition("p1")
-        v1, v2 = _makeArgs(2)
-        p1.addArgument(v1)
-        p1.addArgument(v2)
-        factory.registerPartition("p1", p1)
-        eq = factory.makeEquation("A*p1 + B")
-        eq.A.setValue(2)
-        eq.B.setValue(4)
-        self.assertEquals( (2*1+4)+(2*2+4), eq() )
-
-
-        # Equation with Generator
-        g1 = literals.Generator("g1")
-        g1.literal = p1
-        factory.registerGenerator("g1", g1)
-        eq = factory.makeEquation("A*g1 + B")
-        eq.A.setValue(2)
-        eq.B.setValue(4)
-        self.assertEquals( (2*1+4)+(2*2+4), eq() )
-
-
-        # Partition equation with tags
-        p1 = literals.Partition("p1")
-        v1, v2 = _makeArgs(2)
-        p1.addArgument(v1, "tag", "tag1")
-        p1.addArgument(v2, "tag", "tag2")
-        factory.registerPartition("p1", p1)
-        eq = factory.makeEquation("add(A*p1, B, 'tag1')")
-        eq.A.setValue(2)
-        eq.B.setValue(4)
-        # Addition should only apply to tag1, multiplication applies to both
-        self.assertEquals( (2*1+4)+(2*2+0), eq() )
-
-        eq = factory.makeEquation("add( multiply(A, p1, 'tag1'), B, 'tag2')")
-        eq.A.setValue(2)
-        eq.B.setValue(4)
-        # Addition should only apply to tag2, multiplication applies only to
-        # tag1
-        self.assertEquals( (2*1+0)+(2+4), eq() )
-
-        eq = factory.makeEquation("multiply(A, p1, 'tag1', combine=True) + c")
-        eq.A.setValue(2)
-        eq.c.setValue(1)
-        # Multiplication should only apply to tag2, 'c' should only be added
-        # once, since  the partition is combined by the multiplication
-        self.assertEquals( ((2*1)+(2))+1, eq() )
-
         return
 
     def testBuildEquation(self):
@@ -159,7 +112,7 @@ class TestEquationParser(unittest.TestCase):
         self.assertEquals(eq.args, [eq.A, eq.a])
 
         # Check the number of arguments
-        self.assertRaises(TypeError, sin)
+        self.assertRaises(ValueError, sin)
 
         # custom function
         def _f(a, b):
@@ -184,38 +137,9 @@ class TestEquationParser(unittest.TestCase):
         f = lambda x, sigma : sqrt(e**(-0.5*(x/sigma)**2))
         self.assertTrue(array_equal(eq(), numpy.sqrt(e**(-0.5*(_x/0.1)**2))))
 
-        # Equation with partition
-        _p1 = literals.Partition("p1")
-        v1, v2 = _makeArgs(2)
-        _p1.addArgument(v1)
-        _p1.addArgument(v2)
+        # Equation with Equation
         A = builder.ArgumentBuilder(name="A", value = 2)
         B = builder.ArgumentBuilder(name="B", value = 4)
-        p1 = builder.wrapPartition("p1", _p1)
-        beq = A*p1 + B
-        eq = beq.getEquation()
-        self.assertEquals( (2*1+4)+(2*2+4), eq() )
-        
-        # Equation with Generator
-        _g1 = literals.Generator("g1")
-        _g1.literal = _p1
-        g1 = builder.wrapGenerator("g1", _g1)
-        geq = A*g1 + B
-        eq = geq.getEquation()
-        self.assertEquals( (2*1+4)+(2*2+4), eq() )
-
-        # Equation with conditional operator
-        add =  builder.getBuilder("add")
-        _p1 = literals.Partition("p1")
-        v1, v2 = _makeArgs(2)
-        _p1.addArgument(v1, "tag1")
-        _p1.addArgument(v2, "tag2")
-        p1 = builder.wrapPartition("p1", _p1)
-        beq = add(A*p1, B, "tag1")
-        eq = beq.getEquation()
-        self.assertEquals( (2*1+4)+(2*2+0), eq() )
-
-        # Equation with Equation
         beq = A + B
         eq = beq.getEquation()
         E = builder.wrapEquation("eq", eq)
@@ -234,8 +158,8 @@ class TestEquationParser(unittest.TestCase):
         eq4 = (3*E(A, D)-1).getEquation()
         self.assertEquals(32, eq4())
         # Try to pass the wrong number of arguments
-        self.assertRaises(TypeError, E, A)
-        self.assertRaises(TypeError, E, A, B, C)
+        self.assertRaises(ValueError, E, A)
+        self.assertRaises(ValueError, E, A, B, C)
         
         return
 
