@@ -17,7 +17,7 @@
 Equation is a functor that holds a Literal tree that defines an equation. It's
 __call__ method evaluates the equation at the most recent value of its
 Arguments. The non-constant arguments are accessible as attributes of the
-Equation instance.
+Equation instance and can be passed as arguments to __call__.
 
 Example
 > # make a Literal tree. Here's a simple one
@@ -38,53 +38,41 @@ See the class documentation for more information.
 
 """
 
-# IDEA - Evaluate the branch-weight at every node when the root is added. Use
-# this to break the evaluation into smaller problems that can be run in
-# parallel.
+from .visitors import validate, findArgs, swap
 
-from .visitors import Validator
-from .visitors import ArgFinder
-from .visitors import Swapper
-from .literals import Argument
-from .literals import Operator
+from diffpy.srfit.util.ordereddict import OrderedDict
 
-class Equation(Operator):
+class Equation(object):
     """Class for holding and evaluating a Literal tree.
 
     Instances have attributes that are the non-const Arguments of the tree
-    (accessed by name) and a __call__ method that uses an Evaluator vistor to
-    evaluate the tree.  It is assumed, but not checked that Arguments have
-    unique names.  If this is not the case, then one should keep their own list
-    of Arguments.
+    (accessed by name) and a __call__ method that evaluates the tree.  It is
+    assumed, but not enforced that Arguments have unique names.  If this is not
+    the case, then one should keep its own list of Arguments.
 
     The tree is scanned for errors when it is added. Thus, the tree should be
     complete before putting it inside an Equation.
 
     Attributes
-    evaluator   --  An Evaluator instance unique to this Equation
-    root        --  The root Literal of the equation tree
-    argdict     --  A dictionary of Arguments from the root, indexed by
-                    name. This is used by the __call__ method.
-    args        --  A list of Arguments, used to preserve the order of the
-                    Arguments, which is used by the __call__ method.
-    name        --  A name for this Equation.
-    clicker     --  A Clicker instance for recording change in the Generator.
-    literal     --  An Argument to store the value of te
+    root    --  The root Literal of the equation tree
+    argdict --  An OrderedDict of Arguments from the root.
+    name    --  A name for this Equation.
 
     """
 
-    def __init__(self, root=None):
+    def __init__(self, root=None, name=None):
         """Initialize.
 
-        root    --  The root node of the Literal tree (optional)
+        root    --  The root node of the Literal tree (default None). If root
+                    is not passed here, you must call the 'setRoot' method to
+                    set or change the root node.
+        name    --  The name of this Equation (optional, default None)
 
         """
-        Generator.__init__(self)
-        self.evaluator = None
+        # Set required Operator data
+        self.name = None
         self.root = None
-        self.argdict = {}
-        self.literal = Argument()
-
+        self.argdict = OrderedDict()
         if root is not None:
             self.setRoot(root)
         return
@@ -103,24 +91,15 @@ class Equation(Operator):
         ValueError if errors are found in the Literal tree.
 
         """
-        validator = Validator()
-        root.identify(validator)
-        if validator.errors:
-            m = "Errors found in Literal tree %s\n"%root
-            m += "\n".join(validator.errors)
-            raise ValueError(m)
 
-        argfinder = ArgFinder(getconsts=False)
-        root.identify(argfinder)
-        self.args = list(argfinder.args)
-        self.argdict = dict( [(arg.name, arg) for arg in argfinder.args] )
-
-        partfinder = PartFinder()
-        root.identify(partfinder)
-        self.evaluator = Evaluator(parts = bool(partfinder.parts))
-
+        # Start by validating
+        validate(root)
         self.root = root
-        self.clicker.addSubject(root.clicker)
+
+        # Get the args
+        args = findArgs(root, getconsts=False)
+        self.argdict = OrderedDict( [(arg.name, arg) for arg in args] )
+        
         return
 
     def __call__(self, *args, **kw):
@@ -135,10 +114,11 @@ class Equation(Operator):
 
         """
         # Process args
+        myargs = self.argdict.values()
         for idx, val in enumerate(args):
-            if idx > len(self.args):
+            if idx > len(self.argdict):
                 raise ValueError("Too many arguments")
-            arg = self.args[idx]
+            arg = myargs[idx]
             arg.setValue(val)
 
         # Process kw
@@ -148,62 +128,13 @@ class Equation(Operator):
                 raise ValueError("No argument named '%s' here"%name)
             arg.setValue(val)
 
-        # Evaluate the function
-        self.root.identify(self.evaluator)
-        self.evaluator.click()
-        return self.evaluator.value
-
+        return self.root.getValue()
+        
     def swap(self, oldlit, newlit):
-        """Swap out one Literal in the equation for another one.
-
-        oldlit  --  A Literal to be swapped out
-        newlit  --  A Literal to be swapped in
-
-        Rules:
-        Argument    --  All instances of oldlit replaced with newlit (even
-                        within Generators and Partitions)
-        Generator   --  All instances of oldlit replaced with newlit
-        Operator    --  All instances of oldlit replaced with newlit, Literals
-                        of oldlit added to newlit
-        Partition   --  All instances of oldlit replaced with newlit
-
-        Raises TypeError of oldlit and newlit are incompatible
-
-        """
-
-        swapper = Swapper(oldlit, newlit)
-        # We can't swap out the root node, so we'll put our root inside of an
-        # identity operator.
-        identity = Operator("identity", operation = lambda x: x, nin = 1)
-        identity.addLiteral(self.root)
-        identity.identify(swapper)
-
-        # Now remove the root from the identity operator
-        identity.clicker.removeSubject(self.root.clicker)
-
-        # Remove the new root, if there is one
-        identity.clicker.removeSubject(newlit.clicker)
-
-        # Now reset the root so we can find the arguments properly
-        self.setRoot(self.root)
-
+        """Swap a literal in the equation for another."""
+        newroot = swap(self.root, oldlit, newlit)
+        self.setRoot(newroot)
         return
-
-    # for the Generator interface
-    def generate(self, clicker):
-        """Generate the Literal.
-
-        clicker --  A Clicker instance for decision making. It is not up to the
-                    Evaluator or any other visitor to decide when it can call
-                    this method.  The clicker can be used by the Generator to
-                    make that decision.
-
-        This stores the value of the equation in the literal attribute.
-
-        """
-        self.literal.setValue( self() )
-        return
-
 
 # version
 __id__ = "$Id$"

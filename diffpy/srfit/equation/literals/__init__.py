@@ -42,4 +42,5 @@ from .operators import DivisionOperator
 from .operators import ExponentiationOperator
 from .operators import RemainderOperator
 from .operators import NegationOperator
+from .operators import ConvolutionOperator
 from .operators import UFuncOperator

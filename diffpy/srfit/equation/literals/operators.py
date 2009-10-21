@@ -45,9 +45,8 @@ class Operator(Literal, OperatorABC):
     nout    --  Number of outputs
     operation   --  Function that performs the operation. e.g. numpy.add or
     symbol  --  The symbolic representation. e.g. "+" or "sin"
-                numpy.sin
-    _value  --  The value of the Argument. Modified with 'setValue'.
-    value   --  Property for 'getValue' and 'setValue'.
+    _value  --  The value of the Operator.
+    value   --  Property for 'getValue'.
 
     """
 
@@ -115,6 +114,48 @@ class Operator(Literal, OperatorABC):
         return self.__repr__()
 
     value = property(getValue)
+
+    def _swapLiteral(self, oldlit, newlit):
+        """Swap a literal argument of an operator.
+        
+        This is used by the Swapper visitor.
+
+        """
+
+        if oldlit is newlit:
+            return
+
+        while oldlit in self.args:
+
+            # Record the index
+            idx = self.args.index(oldlit)
+            # Remove the literal
+            del self.args[idx]
+            # Remove self as an observer. A KeyError will be raised if we
+            # attempt to remove the same observer more than once, which might
+            # happen if the oldlit appears multiple times in self.args.
+            try:
+                oldlit.removeObserver(self._flush)
+            except KeyError:
+                pass
+
+            # Validate the new literal. If it fails, we need to restore the old one
+            try:
+                self._loopCheck(newlit)
+            except ValueError:
+                # Restore the old literal
+                self.args.insert(idx, oldlit)
+                oldlit.addObserver(self._flush)
+                raise
+
+            # If we got here, then go on with replacing the literal
+            self.args.insert(idx, newlit)
+            oldlit.addObserver(self._flush)
+            self._flush(None)
+
+        return
+
+
 
 
 # Some specified operators
@@ -199,12 +240,15 @@ class NegationOperator(Operator):
         return
 
 class ConvolutionOperator(Operator):
-    """Scaled version of the numpy.convolve operator.
+    """Convolve two signals.
 
-    This calls numpy.convolve, but divides by the sum of the second argument in
-    hopes of preserving the scale of the first argument.
-    numpy.conolve(v1, v2, mode = "same")/sum(v2)
-    It then truncates to the length of the first array.
+    This convolves two signals such that centroid of the first array is not
+    altered by the convolution. Furthermore, the integrated amplitude of the
+    convolution is scaled to be that of the first signal. This is mean to act
+    as a convolution of a signal by a probability distribution.
+
+    Note that this is only possible when the signals are computed over the same
+    range.
 
     """
 
@@ -215,9 +259,26 @@ class ConvolutionOperator(Operator):
         self.symbol = "convolve"
 
         def conv(v1, v2):
-            """numpy.conolve(v1, v2, mode = "same")/sum(v2)"""
-            c = numpy.convolve(v1, v2, mode="same")/sum(v2)
-            c.resize((len(v1),))
+            # Get the full convolution
+            c = numpy.convolve(v1, v2, mode="full")
+            # Find the centroid of the first signal
+            s1 = sum(v1)
+            x1 = numpy.arange(len(v1), dtype=float)
+            c1idx = numpy.sum(v1 * x1)/s1
+            # Find the centroid of the convolution
+            xc = numpy.arange(len(c), dtype=float)
+            ccidx = numpy.sum(c * xc)/sum(c)
+            # Interpolate the convolution such that the centroids line up. This
+            # uses linear interpolation.
+            shift = ccidx - c1idx
+            x1 += shift
+            c = numpy.interp(x1, xc, c)
+
+            # Normalize
+            sc = sum(c)
+            if sc > 0:
+                c *= s1/sc
+
             return c
 
         self.operation = conv

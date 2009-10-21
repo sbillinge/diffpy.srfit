@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Tests for refinableobj module."""
 
-import diffpy.srfit.equation.visitors as visitors
 import diffpy.srfit.equation.literals as literals
 from diffpy.srfit.equation import Equation
 import unittest
@@ -17,7 +16,6 @@ class TestEquation(unittest.TestCase):
         v1, v2, v3, v4, c = _makeArgs(5)
         c.name = "c"
         c.const = True
-
 
         # Make some operations
         mult = literals.MultiplicationOperator()
@@ -45,7 +43,7 @@ class TestEquation(unittest.TestCase):
 
         # Make the equation
         eq = Equation(mult2)
-        args = eq.args
+        args = eq.argdict.values()
         self.assertTrue(v1 in args)
         self.assertTrue(v2 in args)
         self.assertTrue(v3 in args)
@@ -53,10 +51,10 @@ class TestEquation(unittest.TestCase):
         self.assertTrue(c not in args)
         self.assertTrue(mult2 is eq.root)
 
-        self.assertEqual(v1, eq.v1)
-        self.assertEqual(v2, eq.v2)
-        self.assertEqual(v3, eq.v3)
-        self.assertEqual(v4, eq.v4)
+        self.assertTrue(v1 is eq.v1)
+        self.assertTrue(v2 is eq.v2)
+        self.assertTrue(v3 is eq.v3)
+        self.assertTrue(v4 is eq.v4)
 
         self.assertEqual(20, eq()) # 20 = 2.5*(1+3)*(4-2)
         self.assertEqual(25, eq(v1=2)) # 25 = 2.5*(2+3)*(4-2)
@@ -67,6 +65,19 @@ class TestEquation(unittest.TestCase):
         # Try some swapping
         eq.swap(v4, v1)
         self.assertEqual(15, eq()) # 15 = 2.5*(2+1)*(2-0)
+        args = eq.argdict.values()
+        self.assertTrue(v4 not in args)
+
+        # Try to create a dependency loop
+        self.assertRaises(ValueError, eq.swap, v1, eq.root)
+        self.assertRaises(ValueError, eq.swap, v1, plus)
+        self.assertRaises(ValueError, eq.swap, v1, minus)
+        self.assertRaises(ValueError, eq.swap, v1, mult)
+        self.assertRaises(ValueError, eq.swap, v1, mult2)
+
+        eq.swap(eq.root, v1)
+        self.assertEqual(v1.value, eq())
+
         return
 
 if __name__ == "__main__":

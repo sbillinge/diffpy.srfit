@@ -113,6 +113,41 @@ class TestOperator(unittest.TestCase):
 
         return
 
+class TestConvolutionOperator(unittest.TestCase):
+
+    def testValue(self):
+        """Make sure the convolution operator is working properly."""
+
+        import numpy
+        pi = numpy.pi
+        exp = numpy.exp
+
+        x = numpy.linspace(0, 10, 1000)
+
+        mu1 = 4.5
+        sig1 = 0.1
+        mu2 = 2.5
+        sig2 = 0.4
+
+        g1 = exp(-0.5*((x-mu1)/sig1)**2)
+        a1 = literals.Argument(name = "g1", value = g1)
+        g2 = exp(-0.5*((x-mu2)/sig2)**2)
+        a2 = literals.Argument(name = "g2", value = g2)
+
+        op = literals.ConvolutionOperator()
+        op.addLiteral(a1)
+        op.addLiteral(a2)
+
+        g3c = op.value
+
+        mu3 = mu1
+        sig3 = (sig1**2 + sig2**2)**0.5
+        g3 = exp(-0.5*((x-mu3)/sig3)**2)
+        g3 *= sum(g1)/sum(g3)
+
+        self.assertAlmostEquals(sum(g3c), sum(g3))
+        self.assertAlmostEquals(0, sum((g3-g3c)**2))
+        return
 
 
 if __name__ == "__main__":

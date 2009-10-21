@@ -68,6 +68,13 @@ class Swapper(Visitor):
 
         """
 
+        # Check to see if we need to swap out this Operator. If so, then we
+        # don't need to traverse into its arguments.
+        if op is self.oldlit:
+            self._swap = True
+            return
+
+        # Now traverse into the arguments.
         for literal in op.args:
             literal.identify(self)
 
@@ -76,52 +83,12 @@ class Swapper(Visitor):
         if self._swap:
 
             if self.oldlit in op.args:
-                _swapLiteral(op, self.oldlit, self.newlit)
+                op._swapLiteral(self.oldlit, self.newlit)
 
             self._swap = False
 
-        # Now, check to see if we need to swap out this Operator
-        if op is self.oldlit:
-            self._swap = True
 
         return
-
-
-def _swapLiteral(op, oldlit, newlit):
-    """Swap a literal argument of an operator."""
-
-    if oldlit is newlit:
-        return
-
-    while oldlit in op.args:
-
-        # Record the index
-        idx = op.args.index(oldlit)
-        # Remove the literal
-        del op.args[idx]
-        # Remove op as an observer. A KeyError will be raised if we attempt to
-        # remove the same observer more than once, which might happen if the
-        # oldlit appears multiple times in op.args.
-        try:
-            oldlit.removeObserver(op._flush)
-        except KeyError:
-            pass
-
-        # Validate the new literal. If it fails, we need to restore the old one
-        try:
-            op._loopCheck(newlit)
-        except ValueError:
-            # Restore the old literal
-            op.args.insert(idx, oldlit)
-            oldlit.addObserver(op._flush)
-            raise
-
-        # If we got here, then go on with replacing the literal
-        op.args.insert(idx, newlit)
-        oldlit.addObserver(op._flush)
-        op._flush(None)
-
-    return
 
 
 # version
