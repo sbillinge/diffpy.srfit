@@ -27,15 +27,15 @@ class LiteralABC(object):
     @abstractmethod
     def identify(self, visitor): pass
 
+    @abstractmethod
+    def getValue(self): pass
+    
     name = abstractproperty(None, None)
 
 # End class LiteralABC
 
 class ArgumentABC(LiteralABC):
     """Abstract Base Class for Argument. See Argument for usage."""
-
-    @abstractmethod
-    def getValue(self): pass
 
     @abstractmethod
     def setValue(self, value): pass
@@ -50,9 +50,6 @@ class OperatorABC(LiteralABC):
 
     @abstractmethod
     def addLiteral(self, literal): pass
-
-    @abstractmethod
-    def getValue(self): pass
 
     args = abstractproperty(None, None)
     nin = abstractproperty(None, None)

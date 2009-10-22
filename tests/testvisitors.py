@@ -100,7 +100,7 @@ class TestArgFinder(unittest.TestCase):
         v4.setValue(4)
 
         # now get the args
-        args = visitors.findArgs(mult)
+        args = visitors.getArgs(mult)
         self.assertEqual(4, len(args))
         self.assertTrue(v1 in args)
         self.assertTrue(v2 in args)
@@ -114,7 +114,7 @@ class TestArgFinder(unittest.TestCase):
         # Make some variables
         v1 = _makeArgs(1)[0]
 
-        args = visitors.findArgs(v1)
+        args = visitors.getArgs(v1)
 
         self.assertEquals(1, len(args))
         self.assertTrue(args[0] is v1)
@@ -159,7 +159,7 @@ class TestSwapper(unittest.TestCase):
         self.assertTrue(mult._value is None)
 
         # now get the args
-        args = visitors.findArgs(mult)
+        args = visitors.getArgs(mult)
         self.assertEqual(4, len(args))
         self.assertTrue(v1 in args)
         self.assertTrue(v2 not in args)
@@ -173,6 +173,7 @@ class TestSwapper(unittest.TestCase):
         # Swap out the "-" operator
         plus2 = literals.AdditionOperator()
         visitors.swap(mult, minus, plus2)
+        self.assertTrue(mult._value is None)
 
         # plus2 has no arguments yet. Verify this.
         self.assertRaises(ValueError, mult.getValue)

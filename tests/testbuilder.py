@@ -3,6 +3,7 @@
 
 import diffpy.srfit.equation.builder as builder
 import diffpy.srfit.equation.literals as literals
+import diffpy.srfit.equation.visitors as visitors
 
 import unittest
 
@@ -10,7 +11,7 @@ import numpy
 
 from utils import _makeArgs
 
-class TestRegistration(unittest.TestCase):
+class TestBuilder(unittest.TestCase):
 
     def testRegisterArg(self):
 
@@ -18,7 +19,9 @@ class TestRegistration(unittest.TestCase):
 
         v1 = _makeArgs(1)[0]
 
-        factory.registerArgument("v1", v1)
+        b1 = factory.registerArgument("v1", v1)
+        self.assertTrue(factory.builders["v1"] is b1)
+        self.assertTrue(b1.literal is v1)
 
         eq = factory.makeEquation("v1")
 
@@ -34,9 +37,85 @@ class TestRegistration(unittest.TestCase):
         self.assertEquals(1, len(eq.args))
         return
 
+    def testRegisterOperator(self):
+        """Try to use an operator without arguments in an equation."""
 
+        factory = builder.EquationFactory()
+        v1, v2, v3, v4 = _makeArgs(4)
 
-class TestEquationParser(unittest.TestCase):
+        op = literals.AdditionOperator()
+
+        op.addLiteral(v1)
+        op.addLiteral(v2)
+
+        factory.registerArgument("v3", v3)
+        factory.registerArgument("v4", v4)
+        factory.registerOperator("op", op)
+
+        # Build an equation where op is treated as a terminal node
+        eq = factory.makeEquation("op")
+        self.assertAlmostEquals(3, eq())
+
+        eq = factory.makeEquation("v3*op")
+        self.assertAlmostEquals(9, eq())
+
+        # Now use the op like a function
+        eq = factory.makeEquation("op(v3, v4)")
+        self.assertAlmostEquals(7, eq())
+
+        # Make sure we can still access op as itself.
+        eq = factory.makeEquation("op")
+        self.assertAlmostEquals(3, eq())
+
+        return
+
+    def testSwapping(self):
+
+        import numpy
+        def g1(v1, v2, v3, v4):
+            return (v1 + v2) * (v3 + v4)
+        def g2(v1):
+            return 0.5*v1
+
+        factory = builder.EquationFactory()
+        v1, v2, v3, v4, v5 = _makeArgs(5)
+
+        factory.registerArgument("v1", v1)
+        factory.registerArgument("v2", v2)
+        factory.registerArgument("v3", v3)
+        factory.registerArgument("v4", v4)
+        b = factory.registerFunction("g", g1, ["v1", "v2", "v3", "v4"])
+
+        # Now associate args with the wrapped function
+        op = b.literal
+        self.assertTrue(op.operation == g1)
+        self.assertTrue(v1 in op.args)
+        self.assertTrue(v2 in op.args)
+        self.assertTrue(v3 in op.args)
+        self.assertTrue(v4 in op.args)
+        self.assertAlmostEquals(21, op.value)
+
+        eq1 = factory.makeEquation("g")
+        self.assertTrue(eq1.root is op)
+        self.assertAlmostEquals(21, eq1())
+
+        # Swap out an argument by registering it under a taken name
+        b = factory.registerArgument("v4", v5)
+        self.assertTrue(factory.builders["v4"] is b)
+        self.assertTrue(b.literal is v5)
+        self.assertTrue(op._value is None)
+        self.assertTrue(op.args == [v1, v2, v3, v5])
+        self.assertAlmostEquals(24, eq1())
+
+        # Now swap out the function
+        b = factory.registerFunction("g", g2, ["v1"])
+        op = b.literal
+        self.assertTrue(op.operation == g2)
+        self.assertTrue(v1 in op.args)
+        self.assertTrue(eq1.root is op)
+        self.assertAlmostEquals(0.5, op.value)
+        self.assertAlmostEquals(0.5, eq1())
+        return
 
     def testParseEquation(self):
 
@@ -82,7 +161,7 @@ class TestEquationParser(unittest.TestCase):
         self.assertEquals(eq.args, [eq.sigma])
 
         # Equation with user-defined functions
-        factory.registerFunction("myfunc", eq, 1)
+        factory.registerFunction("myfunc", eq, ["sigma"])
         eq2 = factory.makeEquation("c*myfunc(sigma)")
         self.assertTrue(array_equal(eq2(c=2, sigma=sigma), 2*f(x,sigma)))
         self.assertTrue("sigma" in eq2.argdict)
@@ -153,10 +232,8 @@ class TestEquationParser(unittest.TestCase):
         eq3 = (E(C, D)+1).getEquation()
         self.assertEquals(12, eq3())
         # Pass old and new arguments to the equation
-        # If things work right, A has been given the value of C in the last
-        # evaluation (5)
         eq4 = (3*E(A, D)-1).getEquation()
-        self.assertEquals(32, eq4())
+        self.assertEquals(23, eq4())
         # Try to pass the wrong number of arguments
         self.assertRaises(ValueError, E, A)
         self.assertRaises(ValueError, E, A, B, C)

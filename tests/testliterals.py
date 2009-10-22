@@ -6,6 +6,7 @@ import unittest
 import numpy
 
 import diffpy.srfit.equation.literals as literals
+import diffpy.srfit.equation.literals.abcs as abcs
 
 
 class TestArgument(unittest.TestCase):
@@ -18,6 +19,13 @@ class TestArgument(unittest.TestCase):
         self.assertTrue(None is a.name)
         return
 
+    def testIdentity(self):
+        """Make sure an Argument is an Argument."""
+        a = literals.Argument()
+        self.assertTrue(abcs.issubclass(literals.Argument, abcs.ArgumentABC))
+        self.assertTrue(abcs.isinstance(a, abcs.ArgumentABC))
+        return
+
     def testValue(self):
         """Test value setting."""
 
@@ -28,10 +36,11 @@ class TestArgument(unittest.TestCase):
 
         # Test setting value
         a.setValue(3.14)
-        self.assertAlmostEqual(a._value, 3.14)
+        self.assertAlmostEqual(3.14, a._value)
 
         a.setValue(3.14)
-        self.assertAlmostEqual(a.value, 3.14)
+        self.assertAlmostEqual(3.14, a.value)
+        self.assertAlmostEqual(3.14, a.getValue())
         return
 
 class TestOperator(unittest.TestCase):
@@ -46,6 +55,13 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(1, op.nout)
         self.assertEqual(None, op._value)
         self.assertEqual([], op.args)
+        return
+
+    def testIdentity(self):
+        """Make sure an Argument is an Argument."""
+        op = literals.Operator(symbol = "+", operation = numpy.add, nin = 2)
+        self.assertTrue(abcs.issubclass(literals.Operator, abcs.OperatorABC))
+        self.assertTrue(abcs.isinstance(op, abcs.OperatorABC))
         return
 
     def testValue(self):
@@ -64,6 +80,7 @@ class TestOperator(unittest.TestCase):
         a.setValue(4)
         self.assertTrue(op._value is None)
         self.assertAlmostEqual(4, op.value)
+        self.assertAlmostEqual(4, op.getValue())
 
         b.value = 2
         self.assertTrue(op._value is None)
@@ -88,11 +105,11 @@ class TestOperator(unittest.TestCase):
         self.assertRaises(ValueError, op.getValue)
 
         op.addLiteral(b)
-        self.assertAlmostEqual(op.getValue(), 0)
+        self.assertAlmostEqual(0, op.value)
 
         a.setValue(1)
         b.setValue(2)
-        self.assertAlmostEqual(op.getValue(), 3)
+        self.assertAlmostEqual(3, op.value)
 
         a.setValue(None)
         self.assertRaises(ValueError, op.getValue)
@@ -148,7 +165,6 @@ class TestConvolutionOperator(unittest.TestCase):
         self.assertAlmostEquals(sum(g3c), sum(g3))
         self.assertAlmostEquals(0, sum((g3-g3c)**2))
         return
-
 
 if __name__ == "__main__":
 

@@ -16,8 +16,7 @@
 
 Literals are base pieces of the equation hierarchy. The 'identify' method
 identifies the Literal to a visitor by calling the identifying method of the
-vistior. The getValue and setValue method are used to get the value of the
-Literal, or evaluate it if necessary.
+vistior. 
 
 """
 
@@ -47,6 +46,10 @@ class Literal(Observable,LiteralABC):
         self.name = name
         return
 
+    def getValue(self):
+        """Get the value of the Literal."""
+        raise NotImplementedError("Define in derived class")
+
     def identify(self, visitor):
         """Identify self to a visitor."""
         m = "'%s' must override 'identify'" % self.__class__.__name__
@@ -59,7 +62,6 @@ class Literal(Observable,LiteralABC):
         self._value = None
         self.notify()
         return
-
 
 # version
 __id__ = "$Id$"

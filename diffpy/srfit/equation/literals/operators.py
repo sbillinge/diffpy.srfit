@@ -50,7 +50,6 @@ class Operator(Literal, OperatorABC):
 
     """
 
-    # Required attributes - used for type checking
     args = None
     nin = None
     nout = None
@@ -91,11 +90,10 @@ class Operator(Literal, OperatorABC):
 
     def getValue(self):
         """Get or evaluate the value of the operator."""
-        if self._value is not None:
-            return self._value
-
-        vals = [l.value for l in self.args]
-        return self.operation(*vals)
+        if self._value is None:
+            vals = [l.value for l in self.args]
+            self._value = self.operation(*vals)
+        return self._value
 
     def _loopCheck(self, literal):
         """Check if a literal causes self-reference."""
@@ -113,7 +111,7 @@ class Operator(Literal, OperatorABC):
             return "Operator(" + self.name + ")"
         return self.__repr__()
 
-    value = property(getValue)
+    value = property(lambda self: self.getValue())
 
     def _swapLiteral(self, oldlit, newlit):
         """Swap a literal argument of an operator.
@@ -139,7 +137,8 @@ class Operator(Literal, OperatorABC):
             except KeyError:
                 pass
 
-            # Validate the new literal. If it fails, we need to restore the old one
+            # Validate the new literal. If it fails, we need to restore the old
+            # one
             try:
                 self._loopCheck(newlit)
             except ValueError:

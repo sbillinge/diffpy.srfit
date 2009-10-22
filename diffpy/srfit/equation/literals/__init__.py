@@ -44,3 +44,10 @@ from .operators import RemainderOperator
 from .operators import NegationOperator
 from .operators import ConvolutionOperator
 from .operators import UFuncOperator
+
+# Try some optimizations on these classes
+try:
+    import psyco
+    psyco.profile()
+except ImportError:
+    pass

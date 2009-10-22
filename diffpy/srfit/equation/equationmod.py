@@ -38,7 +38,7 @@ See the class documentation for more information.
 
 """
 
-from .visitors import validate, findArgs, swap
+from .visitors import validate, getArgs, swap
 
 from diffpy.srfit.util.ordereddict import OrderedDict
 
@@ -57,6 +57,7 @@ class Equation(object):
     root    --  The root Literal of the equation tree
     argdict --  An OrderedDict of Arguments from the root.
     args    --  Property that gets the values of argdict.
+    _factory    --  The EquationFactory that created this Equation (default None).
 
     """
 
@@ -73,6 +74,7 @@ class Equation(object):
         self.argdict = OrderedDict()
         if root is not None:
             self.setRoot(root)
+        self._factory = None
         return
 
     def _getArgs(self):
@@ -100,7 +102,7 @@ class Equation(object):
         self.root = root
 
         # Get the args
-        args = findArgs(root, getconsts=False)
+        args = getArgs(root, getconsts=False)
         self.argdict = OrderedDict( [(arg.name, arg) for arg in args] )
         
         return

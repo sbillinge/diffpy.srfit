@@ -30,8 +30,8 @@ from .printer import Printer
 from .validator import Validator
 from .swapper import Swapper
 
-def findArgs(literal, getconsts = True):
-    """Find the Arguments of a Literal tree.
+def getArgs(literal, getconsts = True):
+    """Get the Arguments of a Literal tree.
 
     getconsts   --  If True (default), then Arguments designated as constant
                     are also retrieved.
