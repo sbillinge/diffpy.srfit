@@ -103,8 +103,8 @@ class FitResults(object):
 
         # Store the constraint information
         self.constraints = list(recipe.getConstrainedPars(True))
-        self.connames = [par.name for con in self.constraints]
-        self.convals = [par.getValue() for con in self.constraints]
+        self.connames = [par.name for par in self.constraints]
+        self.convals = [par.getValue() for par in self.constraints]
 
         # Calculate the covariance
         self._calculateCovariance()

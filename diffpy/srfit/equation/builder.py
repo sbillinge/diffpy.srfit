@@ -139,9 +139,16 @@ class EquationFactory(object):
         Returns a callable Literal representing the equation string.
 
         """
-        self._prepareBuilders(eqstr, buildargs, argclass, argkw)
-        beq = eval(eqstr, self.builders)
-        eq = beq.getEquation()
+        # If eqstr is the name of a builder, return the equation of its literal
+        if eqstr in self.builders:
+            builder = self.builders[eqstr]
+            root = builder.literal
+            name = "_eq_%s"%root.name
+            eq = Equation(name, root)
+        else:
+            self._prepareBuilders(eqstr, buildargs, argclass, argkw)
+            beq = eval(eqstr, self.builders)
+            eq = beq.getEquation()
         self.equations.add(eq)
         return eq
 

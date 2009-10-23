@@ -24,11 +24,11 @@ generate a the profile.
 Instructions
 
 Run the example and note the last line of the output. It will be described in
-the code. Then read through 'IntensityGenerator' class.  This will describe and
-motivate the need for the ProfileGenerator class. Next read the 'makeRecipe'
-code.  This will demonstrate how to use the generator, the structure container
-needed by the generator and introduce new operations that can be used in a
-registered equation. 
+the code. Then read through 'IntensityGenerator' class.  This will motivate the
+need for the ProfileGenerator class. Next read the 'makeRecipe' code.  This
+will demonstrate how to use the generator, the structure container needed by
+the generator and introduce new operations that can be used in a registered
+equation. 
 
 Extensions
 

@@ -45,7 +45,6 @@ class TestParameter(unittest.TestCase):
 
         l.constrain(constraint)
         self.assertAlmostEqual(0, l.getValue())
-        self.assertRaises(AttributeError, l.setValue, 1)
 
         l.unconstrain()
         self.assertAlmostEqual(0, l.getValue())
@@ -77,11 +76,11 @@ class TestParameterProxy(unittest.TestCase):
         self.assertEqual(l.getValue(), la.getValue())
 
         # Change the parameter
-        l.setValue(2.3)
+        l.value = 2.3
         self.assertEqual(l.getValue(), la.getValue())
 
         # Change the proxy
-        la.setValue(3.2)
+        la.value = 3.2
         self.assertEqual(l.getValue(), la.getValue())
 
         return
@@ -94,14 +93,12 @@ class TestParameterProxy(unittest.TestCase):
         def constraint():
             return 0
 
-        self.assertAlmostEqual(3.14, l.getValue())
+        self.assertAlmostEqual(3.14, l.value)
         self.assertAlmostEqual(3.14, la.getValue())
 
         l.constrain(constraint)
         self.assertAlmostEqual(0, l.getValue())
         self.assertAlmostEqual(0, la.getValue())
-        self.assertRaises(AttributeError, l.setValue, 1)
-        self.assertRaises(AttributeError, la.setValue, 1)
 
         la.unconstrain()
         self.assertAlmostEqual(0, l.getValue())
@@ -164,7 +161,6 @@ class TestParameterWrapper(unittest.TestCase):
         l.constrain(constraint)
         self.assertAlmostEqual(0, l.getValue())
         self.assertAlmostEqual(0, la.getValue())
-        self.assertRaises(AttributeError, l.setValue, 1)
 
         la.unconstrain()
         self.assertAlmostEqual(0, l.getValue())

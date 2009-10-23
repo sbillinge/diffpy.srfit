@@ -132,13 +132,13 @@ class TestFitRecipe(unittest.TestCase):
         # Remove the restraint and variable
         self.recipe.unrestrain(r1)
         self.recipe.delVar(self.recipe.Avar)
-        res = self.recipe.residual([])
+        self.recipe._ready = False
+        res = self.recipe.residual()
         chi2 = 0
         self.assertAlmostEqual(chi2, dot(res, res) )
 
         # Add constraints at the fitcontribution level. 
         self.fitcontribution.constrain(self.fitcontribution.c, "2*A")
-        self.recipe._ready = False
         # This should evaluate to sin(x+2)
         x = self.profile.x
         y = sin(x+2)
@@ -149,7 +149,7 @@ class TestFitRecipe(unittest.TestCase):
         r1 = self.fitcontribution.restrain(self.fitcontribution.c, 0, 0, 1, 2)
         self.recipe._ready = False
         # The chi2 is the same as above, plus 4
-        res = self.recipe.residual([])
+        res = self.recipe.residual()
         x = self.profile.x
         y = sin(x+2)
         chi2 = 4 + dot(y - self.profile.y, y - self.profile.y)
@@ -157,9 +157,9 @@ class TestFitRecipe(unittest.TestCase):
 
         # Remove those
         self.fitcontribution.unrestrain(r1)
+        self.recipe._ready = False
         self.fitcontribution.unconstrain(self.fitcontribution.c)
         self.fitcontribution.c.setValue(0)
-        self.recipe._ready = False
         res = self.recipe.residual()
         chi2 = 0
         self.assertAlmostEqual(chi2, dot(res, res) )

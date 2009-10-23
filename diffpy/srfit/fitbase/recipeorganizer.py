@@ -427,7 +427,7 @@ class RecipeOrganizer(RecipeContainer):
         # Make missing Parameters
         for pname in argnames:
             if pname not in self._eqfactory.builders:
-                self._newParameter(pname, None)
+                self._newParameter(pname, 0)
 
         # Now register this.
         self._eqfactory.registerFunction(name, f, argnames)

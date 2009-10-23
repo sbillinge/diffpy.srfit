@@ -89,16 +89,6 @@ class Parameter(Argument):
         self.notify()
         return
 
-    def setValue(self, val):
-        """Overloaded to work with constraint.
-
-        Raises AttributeError if this Parameter has a constraint.
-
-        """
-        if self.constraint is not None:
-            raise AttributeError("Cannot set value of constrained Parameter")
-        return Argument.setValue(self, val)
-
     def getValue(self):
         """Overloaded to redirect to the constraint."""
         if self.constraint is not None:
@@ -160,7 +150,7 @@ class ParameterProxy(object):
         return getattr(self.par, attrname)
 
     value = property( lambda self: self.par.getValue(), 
-            lambda self, val: self.par.setValue(self, val) )
+            lambda self, val: self.par.setValue(val) )
 
 # End class ParameterProxy
 
