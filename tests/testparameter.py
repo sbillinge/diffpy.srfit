@@ -12,22 +12,56 @@ class TestParameter(unittest.TestCase):
         l = Parameter("l")
 
         l.setValue(3.14)
-        self.assertAlmostEqual(l.getValue(), 3.14)
+        self.assertAlmostEqual(3.14, l.getValue())
 
         # Try array
         import numpy
         x = numpy.arange(0, 10, 0.1)
         l.setValue(x)
         self.assertTrue( l.getValue() is x )
+        self.assertTrue( l.value is x )
 
         # Change the array
         y = numpy.arange(0, 10, 0.5)
-        l.setValue(y)
+        l.value = y
         self.assertTrue( l.getValue() is y )
+        self.assertTrue( l.value is y )
 
         # Back to scalar
         l.setValue(1.01)
-        self.assertAlmostEqual(l.getValue(), 1.01)
+        self.assertAlmostEqual(1.01, l.getValue())
+        self.assertAlmostEqual(1.01, l.value)
+        return
+
+    def testConstraint(self):
+        """Test a constrained parameter."""
+        l = Parameter("l")
+        l.setValue(3.14)
+
+        def constraint():
+            return 0
+
+        self.assertAlmostEqual(3.14, l.getValue())
+
+        l.constrain(constraint)
+        self.assertAlmostEqual(0, l.getValue())
+        self.assertRaises(AttributeError, l.setValue, 1)
+
+        l.unconstrain()
+        self.assertAlmostEqual(0, l.getValue())
+
+        # Constrain in a chain
+        l.value = 3.14
+        l2 = Parameter("l2", 1.23)
+        self.assertAlmostEquals(1.23, l2.value)
+        def constraint2():
+            return l.value
+        l2.constrain(constraint2)
+        self.assertAlmostEquals(3.14, l2.value)
+        l.constrain(constraint)
+        self.assertAlmostEquals(0, l2.value)
+        self.assertAlmostEquals(0, l.value)
+
         return
 
 class TestParameterProxy(unittest.TestCase):
@@ -50,6 +84,28 @@ class TestParameterProxy(unittest.TestCase):
         la.setValue(3.2)
         self.assertEqual(l.getValue(), la.getValue())
 
+        return
+
+    def testConstraint(self):
+        """Test a constrained parameter."""
+        l = Parameter("l", 3.14)
+        la = ParameterProxy("l2", l)
+
+        def constraint():
+            return 0
+
+        self.assertAlmostEqual(3.14, l.getValue())
+        self.assertAlmostEqual(3.14, la.getValue())
+
+        l.constrain(constraint)
+        self.assertAlmostEqual(0, l.getValue())
+        self.assertAlmostEqual(0, la.getValue())
+        self.assertRaises(AttributeError, l.setValue, 1)
+        self.assertRaises(AttributeError, la.setValue, 1)
+
+        la.unconstrain()
+        self.assertAlmostEqual(0, l.getValue())
+        self.assertAlmostEqual(0, la.getValue())
         return
 
 class TestParameterWrapper(unittest.TestCase):
@@ -91,6 +147,28 @@ class TestParameterWrapper(unittest.TestCase):
         la.setValue(3.2)
         self.assertEqual(l.getValue(), la.getValue())
 
+        return
+
+    def testConstraint(self):
+        """Test a constrained parameter."""
+        l = Parameter("l", 3.14)
+        la = ParameterWrapper("l", l, getter = Parameter.getValue, setter =
+                Parameter.setValue)
+
+        def constraint():
+            return 0
+
+        self.assertAlmostEqual(3.14, l.getValue())
+        self.assertAlmostEqual(3.14, la.getValue())
+
+        l.constrain(constraint)
+        self.assertAlmostEqual(0, l.getValue())
+        self.assertAlmostEqual(0, la.getValue())
+        self.assertRaises(AttributeError, l.setValue, 1)
+
+        la.unconstrain()
+        self.assertAlmostEqual(0, l.getValue())
+        self.assertAlmostEqual(0, la.getValue())
         return
 
 if __name__ == "__main__":

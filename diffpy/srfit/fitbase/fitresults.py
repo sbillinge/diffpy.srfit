@@ -36,7 +36,7 @@ class FitResults(object):
     varvals     --  Values of the variables in the recipe.
     varunc      --  Uncertainties in the variable values.
     showcon     --  Show constraint values in the output (default False).
-    connames    --  Names of the constrained parameters.
+    constraints --  List of constrained Parameters.
     convals     --  Values of the constrained parameters.
     conunc      --  Uncertainties in the constraint values.
     residual    --  The scalar residual of the recipe.
@@ -67,7 +67,6 @@ class FitResults(object):
         self.varnames = []
         self.varvals = []
         self.varunc = []
-        self.connames = []
         self.convals = []
         self.conunc = []
         self.cov = None
@@ -103,8 +102,9 @@ class FitResults(object):
         self.varvals = recipe.getValues()
 
         # Store the constraint information
-        self.connames = [con.par.name for con in recipe._oconstraints]
-        self.convals = [con.par.getValue() for con in recipe._oconstraints]
+        self.constraints = list(recipe.getConstrainedPars(True))
+        self.connames = [par.name for con in self.constraints]
+        self.convals = [par.getValue() for con in self.constraints]
 
         # Calculate the covariance
         self._calculateCovariance()
@@ -182,28 +182,18 @@ class FitResults(object):
             rk = self.recipe.residual(pvals)
 
             # The constraints derivatives
-            cond = []
-            for con in recipe._oconstraints:
-                con.update()
-                cond.append(con.par.getValue())
-
+            cond = numpy.array([p.value for p in self.constraints])
             pvals[k] = v - h
             rk -= self.recipe.residual(pvals)
 
-            for i, con in enumerate(recipe._oconstraints):
-                con.update()
-                cond[i] -= con.par.getValue()
-                cond[i] /= 2*h
+            cond -= numpy.array([p.value for p in self.constraints])
+            cond /= 2*h
 
             conr.append(cond)
 
             pvals[k] = v
             r.append(rk/(2*h))
             
-        # Reset the constrained parameters to their original values
-        for con in recipe._oconstraints:
-            con.update()
-
         self._dcon = numpy.vstack(conr).T
 
         # return the jacobian
@@ -509,8 +499,6 @@ class ContributionResults(object):
         if con.profile is None:
             return
 
-        recipe = fitres.recipe
-
         # Store the weight
         self.weight = weight
 
@@ -528,8 +516,7 @@ class ContributionResults(object):
         self._calculateMetrics()
 
         # Find the parameters
-        for i, constraint in enumerate(recipe._oconstraints):
-            par = constraint.par
+        for i, par in enumerate(fitres.constraints):
             loc = con._locateManagedObject(par)
             if loc:
                 self.conlocs.append(loc)

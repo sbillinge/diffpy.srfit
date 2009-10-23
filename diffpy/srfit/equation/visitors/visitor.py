@@ -42,6 +42,15 @@ class Visitor(object):
         """Process an Operator node."""
         return self._abstract("onOperator")
 
+    def onEquation(self, eq):
+        """Process an Equation node.
+
+        Equations are specialized Operators. They don't need to be specifically
+        supported by a Visitor.
+        
+        """
+        return self.onOperator(eq)
+
     # throw an exception
     def _abstract(self, method):
         raise NotImplementedError(

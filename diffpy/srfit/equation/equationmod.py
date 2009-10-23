@@ -38,11 +38,14 @@ See the class documentation for more information.
 
 """
 
-from .visitors import validate, getArgs, swap
-
 from diffpy.srfit.util.ordereddict import OrderedDict
 
-class Equation(object):
+from .visitors import validate, getArgs, swap
+from .literals.operators import Operator
+from .literals.literal import Literal
+
+
+class Equation(Operator):
     """Class for holding and evaluating a Literal tree.
 
     Instances have attributes that are the non-const Arguments of the tree
@@ -53,28 +56,49 @@ class Equation(object):
     The tree is scanned for errors when it is added. Thus, the tree should be
     complete before putting it inside an Equation.
 
+    Equations can act as Operator nodes within a literal tree. In this context,
+    they evaluate as the root node, but provide a calling interface that
+    accepts new argument values for the literal tree.
+
     Attributes
     root    --  The root Literal of the equation tree
     argdict --  An OrderedDict of Arguments from the root.
     args    --  Property that gets the values of argdict.
-    _factory    --  The EquationFactory that created this Equation (default None).
+
+    Operator Attributes
+    args    --  List of Literal arguments, set with 'addLiteral'
+    name    --  A name for this operator. e.g. "add" or "sin"
+    nin     --  Number of inputs (<1 means this is variable)
+    nout    --  Number of outputs
+    operation   --  Function that performs the operation. e.g. numpy.add.
+    symbol  --  The symbolic representation. e.g. "+" or "sin".
+    _value  --  The value of the Operator.
+    value   --  Property for 'getValue'.
 
     """
 
-    def __init__(self, root=None):
+    def __init__(self, name = None, root = None):
         """Initialize.
 
+        name    --  A name for this Equation.
         root    --  The root node of the Literal tree (default None). If root
                     is not passed here, you must call the 'setRoot' method to
                     set or change the root node.
 
         """
-        # Set required Operator data
+        # Operator stuff. We circumvent Operator.__init__ since we're using
+        # args as a property. We cannot set it, as the Operator tries to do.
+        Literal.__init__(self, name)
+        self.symbol = name
+        self.nin = None
+        self.nout = 1
+        self.operation = self.__call__
+
         self.root = None
         self.argdict = OrderedDict()
         if root is not None:
             self.setRoot(root)
-        self._factory = None
+
         return
 
     def _getArgs(self):
@@ -97,14 +121,25 @@ class Equation(object):
 
         """
 
-        # Start by validating
+        # Validate the new root
         validate(root)
+
+        # Stop observing the old root
+        if self.root is not None:
+            self.root.removeObserver(self._flush)
+
+        # Add the new root
         self.root = root
+        self.root.addObserver(self._flush)
+        self._flush(None)
 
         # Get the args
         args = getArgs(root, getconsts=False)
         self.argdict = OrderedDict( [(arg.name, arg) for arg in args] )
-        
+
+        # Set Operator attributes
+        self.nin = len(self.args)
+
         return
 
     def __call__(self, *args, **kw):
@@ -132,13 +167,30 @@ class Equation(object):
                 raise ValueError("No argument named '%s' here"%name)
             arg.setValue(val)
 
-        return self.root.getValue()
-        
+        self._value = self.root.getValue()
+        return self._value
+
     def swap(self, oldlit, newlit):
-        """Swap a literal in the equation for another."""
+        """Swap a literal in the equation for another.
+
+        Note that this may change the root and the operation interface
+
+        """
         newroot = swap(self.root, oldlit, newlit)
         self.setRoot(newroot)
         return
+
+    # Operator methods
+
+    def addLiteral(self, literal):
+        """Cannot add a literal to an Equation."""
+        raise AttributeError("Cannot add literals to an Equation.")
+
+    # Visitors can treat us differently than an Operator.
+
+    def identify(self, visitor):
+        """Identify self to a visitor."""
+        return visitor.onEquation(self)
 
 # version
 __id__ = "$Id$"

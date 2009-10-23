@@ -115,6 +115,18 @@ class TestBuilder(unittest.TestCase):
         self.assertTrue(eq1.root is op)
         self.assertAlmostEquals(0.5, op.value)
         self.assertAlmostEquals(0.5, eq1())
+
+        # Make an equation
+        eqeq = factory.makeEquation("v1 + v2")
+        # Register this "g"
+        b = factory.registerFunction("g", eqeq, eqeq.argdict.keys())
+        op = b.literal
+        self.assertTrue(v1 in op.args)
+        self.assertTrue(v2 in op.args)
+        self.assertTrue(eq1.root is op)
+        self.assertAlmostEquals(3, op.value)
+        self.assertAlmostEquals(3, eq1())
+        
         return
 
     def testParseEquation(self):
@@ -221,7 +233,7 @@ class TestBuilder(unittest.TestCase):
         B = builder.ArgumentBuilder(name="B", value = 4)
         beq = A + B
         eq = beq.getEquation()
-        E = builder.wrapEquation("eq", eq)
+        E = builder.wrapOperator("eq", eq)
         eq2 = (2*E).getEquation()
         # Make sure these evaulate to the same thing
         self.assertEquals(eq.args, [A.literal, B.literal])
@@ -232,8 +244,10 @@ class TestBuilder(unittest.TestCase):
         eq3 = (E(C, D)+1).getEquation()
         self.assertEquals(12, eq3())
         # Pass old and new arguments to the equation
+        # If things work right, A has been given the value of C in the last
+        # evaluation (5)
         eq4 = (3*E(A, D)-1).getEquation()
-        self.assertEquals(23, eq4())
+        self.assertEquals(32, eq4())
         # Try to pass the wrong number of arguments
         self.assertRaises(ValueError, E, A)
         self.assertRaises(ValueError, E, A, B, C)

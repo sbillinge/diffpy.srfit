@@ -29,20 +29,23 @@ ParameterProxy      --  A proxy for another Parameter, but with a different
 
 from diffpy.srfit.equation.literals import Argument
 from diffpy.srfit.equation.literals.abcs import ArgumentABC
-from diffpy.srfit.util.clicker import Clicker
 from diffpy.srfit.util.nameutils import validateName
+
+from numpy import inf
 
 class Parameter(Argument):
     """Parameter class.
     
     Attributes
-    name    --  A name for this Parameter. Names should be unique within a
-                RecipeOrganizer and should be valid attribute names.
-    clicker --  A Clicker instance for recording change in the value.
-    value   --  The value of the Parameter. Modified with setValue.
-    const   --  A flag indicating whether the Parameter is constant. A constant
-                parameter cannot be made into a variable, nor can it be
-                constrained to something else.
+    name    --  A name for this Parameter.
+    const   --  A flag indicating whether this is considered a constant.
+    _value  --  The value of the Parameter. Modified with 'setValue'.
+    value   --  Property for 'getValue' and 'setValue'.
+    constraint  --  A callable that calculates the value of this Parameter. If
+                this is None (None), the the Parameter is responsible for its
+                own value. The callable takes no arguments.
+    bounds  --  A 2-list defining the bounds on the Parameter. This can be
+                used by some optimizers when the Parameter is varied.
 
     """
 
@@ -54,18 +57,53 @@ class Parameter(Argument):
         value   --  The initial value of this Parameter (default 0).
         const   --  A flag inticating whether the Parameter is a constant (like
                     pi).
-        constrained --  A flag indicating if the Parameter is constrained
-                        (default False).
 
         Raises ValueError if the name is not a valid attribute identifier
         
         """
+        self.constraint = None
+        self.bounds = [-inf, inf]
         validateName(name)
-
-        Argument.__init__(self, value, name, const)
-
-        self.constrained = False
+        Argument.__init__(self, name, value, const)
         return
+
+    def constrain(self, eq):
+        """Constrain this Parameter to an equation.
+
+        This retrieves the value of the parameter from eq rather than
+        self._value and disables setting the value.
+
+        eq  --  A callable to constrain to
+
+        """
+        self.constraint = eq
+        # Flush because this will change our value
+        self._flush(None)
+        return
+
+    def unconstrain(self):
+        """Unconstrain the Parameter."""
+        if self.constraint is not None:
+            self._value = self.constraint()
+            self.constraint = None
+        self.notify()
+        return
+
+    def setValue(self, val):
+        """Overloaded to work with constraint.
+
+        Raises AttributeError if this Parameter has a constraint.
+
+        """
+        if self.constraint is not None:
+            raise AttributeError("Cannot set value of constrained Parameter")
+        return Argument.setValue(self, val)
+
+    def getValue(self):
+        """Overloaded to redirect to the constraint."""
+        if self.constraint is not None:
+            self._value = self.constraint()
+        return Argument.getValue(self)
 
     def setConst(self, const = True, value = None):
         """Toggle the Parameter as constant.
@@ -93,7 +131,7 @@ class Parameter(Argument):
 class ParameterProxy(object):
     """A Parameter proxy for another parameter. 
     
-    This allows for the same parameter to have multiple names.
+    This allows for the same Parameter to have multiple names.
 
     Attributes
     name    --  A name for this ParameterProxy. Names should be unique within a
@@ -113,7 +151,6 @@ class ParameterProxy(object):
 
         """
         validateName(name)
-
         self.name = name
         self.par = par
         return
@@ -121,6 +158,9 @@ class ParameterProxy(object):
     def __getattr__(self, attrname):
         """Redirect accessors and attributes to the reference Parameter."""
         return getattr(self.par, attrname)
+
+    value = property( lambda self: self.par.getValue(), 
+            lambda self, val: self.par.setValue(self, val) )
 
 # End class ParameterProxy
 
@@ -133,6 +173,24 @@ class ParameterWrapper(Parameter):
     This class wraps an object as a Paramter. The getValue and setValue methods
     of Parameter directly modify the appropriate attribute of the paramter-like
     object.
+
+    Attributes
+    obj     --  The wrapped object
+    getter  --  The unbound function that can be used to access the
+                attribute containing the paramter value. getter(obj) should
+                return the Parameter value.  If getter is None (default),
+                it is assumed that an attribute is accessed directly. If
+                attr is also specified, then the Parameter value will be
+                accessed via getter(obj, attr).
+    setter  --  The unbound function that can be used to modify the
+                attribute containing the paramter value. setter(obj, value)
+                should set the attribute to the passed value. If setter is
+                None (default), it is assumed that an attribute is accessed
+                directly. If attr is also specified, then the Parameter
+                value will be set via setter(obj, attr, value).
+    attr    --  The name of the attribute that contains the value of the
+                parameter. If attr is None (default), then both getter and
+                setter must be specified.
 
     """
 
@@ -183,22 +241,26 @@ class ParameterWrapper(Parameter):
             else:
                 self.setter = lambda obj, val: setter(obj, self.attr, val)
 
+        self.constraint = None
         value = self.getValue()
         Parameter.__init__(self, name, value)
         return
 
     def getValue(self):
-        """Get the value of the Parameter."""
+        """Overloaded to redirect to the constraint."""
+        if self.constraint is not None:
+            return self.constraint()
         return self.getter(self.obj)
 
     def setValue(self, value):
         """Set the value of the Parameter."""
+        if self.constraint is not None:
+            raise AttributeError("Cannot set value of constrained Parameter")
         if value != self.getValue():
+            self.notify()
             self.setter(self.obj, value)
-            self.clicker.click()
-
         return
-                    
+
 # End class ParameterWrapper
 
 # version

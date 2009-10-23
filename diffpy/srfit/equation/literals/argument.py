@@ -71,11 +71,6 @@ class Argument(Literal, ArgumentABC):
     value = property( lambda self: self.getValue(), 
             lambda self, val: self.setValue(val))
 
-    def __str__(self):
-        if self.name:
-            return "Argument(" + self.name + ")"
-        return self.__repr__()
-
 # version
 __id__ = "$Id$"
 

@@ -142,7 +142,6 @@ class EquationFactory(object):
         self._prepareBuilders(eqstr, buildargs, argclass, argkw)
         beq = eval(eqstr, self.builders)
         eq = beq.getEquation()
-        eq._factory = self
         self.equations.add(eq)
         return eq
 
@@ -179,24 +178,10 @@ class EquationFactory(object):
         opbuilder = wrapOperator(name, op)
         return self.registerBuilder(name, opbuilder)
 
-    def registerEquation(self, name, eq):
-        """Register an equation with the factory.
-
-        This lets you register an equation created by an EquationFactory.
-        Equations are wrapped according to their root.
-
-        Returns the registered builder.
-
-        """
-        eqbuilder = wrapEquation(name, eq)
-        return self.registerBuilder(name, eqbuilder)
-
     def registerFunction(self, name, func, argnames):
         """Register a named function with the factory.
 
-        This will register the function as an attribute of this module so it
-        can be recognized in an equation string when parsed with the
-        makeEquation method.
+        This will register a builder for the function.
         
         name    --  The name of the function
         func    --  A callable python object
@@ -392,8 +377,15 @@ class BaseBuilder(object):
 
 
     def getEquation(self):
-        """Get the equation built by this object."""
-        eq = Equation(root = self.literal)
+        """Get the equation built by this object.
+
+        The equation will given the name "_eq_<root>" where "<root>" is the
+        name of the root node.
+        
+        """
+        # We need to make a name for this, so we name it after its root
+        name = "_eq_%s"%self.literal.name
+        eq = Equation(name, self.literal)
         return eq
 
     def __evalBinary(self, other, OperatorClass, onleft = True):
@@ -618,29 +610,7 @@ def wrapFunction(name, func, nin = 2, nout = 1):
     # Create the OperatorBuilder
     opbuilder = OperatorBuilder(name, op)
 
-    # Return it
     return opbuilder
-
-def wrapEquation(name, eq):
-    """Wrap a function as an EquationBuilder.
-
-    Equations are wrapped according their Literal subclass.
-
-    name    --  The name of the funciton
-    eq      --  An equation instance (Literal).
-
-    Returns the proper builder for the root.
-
-    """
-    import diffpy.srfit.equation.literals.abcs as abcs
-    if isinstance(eq.root, abcs.ArgumentABC):
-        builder = ArgumentBuilder(name, eq.root)
-    elif isinstance(eq.root, abcs.OperatorABC):
-        builder = OperatorBuilder(name, eq.root)
-    else:
-        raise ValueError("%s has an invalid root"%eq)
-
-    return builder
 
 def __wrapNumpyOperators():
     """Export all numpy operators as OperatorBuilder instances in the module

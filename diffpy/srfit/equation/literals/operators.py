@@ -43,8 +43,8 @@ class Operator(Literal, OperatorABC):
     name    --  A name for this operator. e.g. "add" or "sin"
     nin     --  Number of inputs (<1 means this is variable)
     nout    --  Number of outputs
-    operation   --  Function that performs the operation. e.g. numpy.add or
-    symbol  --  The symbolic representation. e.g. "+" or "sin"
+    operation   --  Function that performs the operation. e.g. numpy.add.
+    symbol  --  The symbolic representation. e.g. "+" or "sin".
     _value  --  The value of the Operator.
     value   --  Property for 'getValue'.
 
@@ -95,6 +95,8 @@ class Operator(Literal, OperatorABC):
             self._value = self.operation(*vals)
         return self._value
 
+    value = property(lambda self: self.getValue())
+
     def _loopCheck(self, literal):
         """Check if a literal causes self-reference."""
         if literal is self:
@@ -105,57 +107,6 @@ class Operator(Literal, OperatorABC):
             for l in literal.args:
                 self._loopCheck(l)
         return
-
-    def __str__(self):
-        if self.name:
-            return "Operator(" + self.name + ")"
-        return self.__repr__()
-
-    value = property(lambda self: self.getValue())
-
-    def _swapLiteral(self, oldlit, newlit):
-        """Swap a literal argument of an operator.
-        
-        This is used by the Swapper visitor.
-
-        """
-
-        if oldlit is newlit:
-            return
-
-        while oldlit in self.args:
-
-            # Record the index
-            idx = self.args.index(oldlit)
-            # Remove the literal
-            del self.args[idx]
-            # Remove self as an observer. A KeyError will be raised if we
-            # attempt to remove the same observer more than once, which might
-            # happen if the oldlit appears multiple times in self.args.
-            try:
-                oldlit.removeObserver(self._flush)
-            except KeyError:
-                pass
-
-            # Validate the new literal. If it fails, we need to restore the old
-            # one
-            try:
-                self._loopCheck(newlit)
-            except ValueError:
-                # Restore the old literal
-                self.args.insert(idx, oldlit)
-                oldlit.addObserver(self._flush)
-                raise
-
-            # If we got here, then go on with replacing the literal
-            self.args.insert(idx, newlit)
-            oldlit.addObserver(self._flush)
-            self._flush(None)
-
-        return
-
-
-
 
 # Some specified operators
 
@@ -282,7 +233,6 @@ class ConvolutionOperator(Operator):
 
         self.operation = conv
         return
-
 
 class SumOperator(Operator):
     """numpy.sum operator."""

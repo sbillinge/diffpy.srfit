@@ -82,11 +82,64 @@ class Swapper(Visitor):
         # because the order of op.args matters.
         if self._swap:
 
-            if self.oldlit in op.args:
-                op._swapLiteral(self.oldlit, self.newlit)
+            oldlit = self.oldlit
+            newlit = self.newlit
+
+            while oldlit in op.args:
+
+                # Record the index
+                idx = op.args.index(oldlit)
+                # Remove the literal
+                del op.args[idx]
+                # Remove op as an observer. A KeyError will be raised if we
+                # attempt to remove the same observer more than once, which
+                # might happen if the oldlit appears multiple times in op.args.
+                try:
+                    oldlit.removeObserver(op._flush)
+                except KeyError:
+                    pass
+
+                # Validate the new literal. If it fails, we need to restore the
+                # old one
+                try:
+                    op._loopCheck(newlit)
+                except ValueError:
+                    # Restore the old literal
+                    op.args.insert(idx, oldlit)
+                    oldlit.addObserver(op._flush)
+                    raise
+
+                # If we got here, then go on with replacing the literal
+                op.args.insert(idx, newlit)
+                oldlit.addObserver(op._flush)
+                op._flush(None)
 
             self._swap = False
 
+        return
+
+    def onEquation(self, eq):
+        """Process an Equation node.
+
+        This looks at the equation itself as well as the root.
+
+        """
+        if eq is self.oldlit:
+            self._swap = True
+            return
+
+        # If the newlit is the root, then swap that out and move on.
+        if eq.root is self.oldlit:
+            eq.setRoot(self.newlit)
+            return
+
+        # Now move into the equation. We have to do a _loopCheck to make sure
+        # that we won't have any loops in the equation.
+        eq._loopCheck(self.newlit)
+        eq.root.identify(self)
+
+        # Reset the root in case anything changed underneath.
+        eq.setRoot(eq.root)
 
         return
 
