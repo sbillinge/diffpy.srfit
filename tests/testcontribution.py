@@ -111,6 +111,8 @@ class TestContribution(unittest.TestCase):
         self.assertTrue(gen.profile is profile2)
         self.assertTrue(fc._eq is eq)
         self.assertTrue(fc._reseq is reseq)
+        self.assertTrue(fc._eq._value is None)
+        self.assertTrue(fc._reseq._value is None)
 
         # Validate equations
         self.assertTrue(array_equal(xobs2, gen.value))
@@ -127,6 +129,8 @@ class TestContribution(unittest.TestCase):
         fc.setProfile(profile)
         self.assertTrue(fc.profile is profile)
         fc.addProfileGenerator(gen, "I")
+        self.assertTrue(fc._eq._value is None)
+        self.assertTrue(fc._reseq._value is None)
         self.assertEquals(1, len(fc._generators))
         self.assertTrue(gen.name in fc._generators)
 
@@ -144,6 +148,8 @@ class TestContribution(unittest.TestCase):
 
         # Now change the equation
         fc.setEquation("2*I")
+        self.assertTrue(fc._eq._value is None)
+        self.assertTrue(fc._reseq._value is None)
         chiv = fc.residual()
         self.assertAlmostEqual(dot(yobs, yobs), dot(chiv, chiv))
 
@@ -151,23 +157,28 @@ class TestContribution(unittest.TestCase):
         c = Parameter("c", 2)
         fc._addParameter(c)
         fc.setEquation("c*I")
+        self.assertTrue(fc._eq._value is None)
+        self.assertTrue(fc._reseq._value is None)
         chiv = fc.residual()
         self.assertAlmostEqual(dot(yobs, yobs), dot(chiv, chiv))
 
         # Try something more complex
         c.setValue(3)
         fc.setEquation("c**2*sin(I)")
+        self.assertTrue(fc._eq._value is None)
+        self.assertTrue(fc._reseq._value is None)
         from numpy import sin
         xobs = arange(0, 10, 0.5)
         from numpy import sin
         yobs = 9*sin(xobs)
         profile.setObservedProfile(xobs, yobs)
+        self.assertTrue(fc._eq._value is None)
+        self.assertTrue(fc._reseq._value is None)
         
         chiv = fc.residual()
         self.assertAlmostEqual(0, dot(chiv, chiv))
 
-        # Choose a new residual. Note that the calculator can be treated like a
-        # function, hence the I() below
+        # Choose a new residual. 
         fc.setEquation("2*I")
         fc.setResidualEquation("resv")
         chiv = fc.residual()

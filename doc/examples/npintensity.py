@@ -227,7 +227,7 @@ def makeRecipe(strufile, datname):
 
     # This creates a callable equation named "bkgd" within the FitContribution,
     # and turns the polynomial coefficients into Parameters.
-    contribution.registerStringFunction(bkgdstr, "bkgd")
+    eq = contribution.registerStringFunction(bkgdstr, "bkgd")
 
     # We will create the broadening function that we need by creating a python
     # function and registering it with the FitContribution.
@@ -240,11 +240,11 @@ def makeRecipe(strufile, datname):
     # Parameters from the arguments.
     contribution.registerFunction(gaussian)
 
-    # Center the Gaussian.
+    # Center the Gaussian so it is not truncated.
     contribution.q0.setValue(x[len(x)/2])
 
     # Now we can incorporate the scale and bkgd into our calculation. We also
-    # convolve the signal with the gaussian to broaden it. Recall that we don't
+    # convolve the signal with the Gaussian to broaden it. Recall that we don't
     # need to supply arguments to the registered functions unless we want to
     # make changes to their input values.
     contribution.setEquation("scale * convolve(I, gaussian) + bkgd")
@@ -335,10 +335,10 @@ def plotResults(recipe):
     diff = I - Icalc
 
     import pylab
-    pylab.plot(q,I,'o',label="I(Q) Data")
-    pylab.plot(q,Icalc,label="I(Q) Fit")
-    pylab.plot(q,diff,label="I(Q) diff")
-    pylab.plot(q,bkgd,label="Bkgd. Fit")
+    pylab.plot(q,I,'ob',label="I(Q) Data")
+    pylab.plot(q,Icalc,'r-',label="I(Q) Fit")
+    pylab.plot(q,diff,'g-',label="I(Q) diff")
+    pylab.plot(q,bkgd,'c-',label="Bkgd. Fit")
     pylab.xlabel("$Q (\AA^{-1})$")
     pylab.ylabel("Intensity (arb. units)")
     pylab.legend(loc=1)

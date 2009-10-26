@@ -41,9 +41,9 @@ class Parameter(Argument):
     const   --  A flag indicating whether this is considered a constant.
     _value  --  The value of the Parameter. Modified with 'setValue'.
     value   --  Property for 'getValue' and 'setValue'.
-    constraint  --  A callable that calculates the value of this Parameter. If
+    constraint  --  An Equation that calculates the value of this Parameter. If
                 this is None (None), the the Parameter is responsible for its
-                own value. The callable takes no arguments.
+                own value.
     bounds  --  A 2-list defining the bounds on the Parameter. This can be
                 used by some optimizers when the Parameter is varied.
 
@@ -71,20 +71,22 @@ class Parameter(Argument):
         """Constrain this Parameter to an equation.
 
         This retrieves the value of the parameter from eq rather than
-        self._value and disables setting the value.
+        self._value.
 
-        eq  --  A callable to constrain to
+        eq  --  An Equation to constrain to
 
         """
         self.constraint = eq
+        eq.addObserver(self._flush)
         # Flush because this will change our value
-        self._flush(None)
+        self._flush(self)
         return
 
     def unconstrain(self):
         """Unconstrain the Parameter."""
         if self.constraint is not None:
             self._value = self.constraint()
+            self.constraint.removeObserver(self._flush)
             self.constraint = None
         self.notify()
         return
@@ -110,11 +112,6 @@ class Parameter(Argument):
             self.setValue(value)
 
         return
-
-    def __str__(self):
-        if self.name:
-            return "Parameter(" + self.name + ")"
-        return self.__repr__()
 
 # End class Parameter
 
@@ -144,6 +141,9 @@ class ParameterProxy(object):
         self.name = name
         self.par = par
         return
+
+    def __str__(self):
+        return "ParameterProxy(" + self.name + ")"
 
     def __getattr__(self, attrname):
         """Redirect accessors and attributes to the reference Parameter."""
@@ -183,6 +183,10 @@ class ParameterWrapper(Parameter):
                 setter must be specified.
 
     """
+    # FIXME - Cannot gracefully update obj when a constraint changes. Must
+    # figure out how to do this without explicitly applying each constraint.
+    # The problem is that we must be able to interface obj and the Parameter
+    # for the value.
 
     def __init__(self, name, obj, getter = None, setter = None, attr = None):
         """Wrap an object as a Parameter.
@@ -237,18 +241,26 @@ class ParameterWrapper(Parameter):
         return
 
     def getValue(self):
-        """Overloaded to redirect to the constraint."""
-        if self.constraint is not None:
-            return self.constraint()
+        """Overloaded to refer to setter."""
         return self.getter(self.obj)
 
     def setValue(self, value):
         """Set the value of the Parameter."""
-        if self.constraint is not None:
-            raise AttributeError("Cannot set value of constrained Parameter")
         if value != self.getValue():
-            self.notify()
             self.setter(self.obj, value)
+            self.notify()
+        return
+
+    def _flush(self, other):
+        """Overloaded to alert the setter.
+
+        Without doing this here, the underlying object will not be notified of
+        changes.
+
+        """
+        if self.constraint is not None:
+            self.setter(self.obj, self.constraint())
+        self.notify()
         return
 
 # End class ParameterWrapper

@@ -111,8 +111,9 @@ class Swapper(Visitor):
 
                 # If we got here, then go on with replacing the literal
                 op.args.insert(idx, newlit)
-                oldlit.addObserver(op._flush)
+                newlit.addObserver(op._flush)
                 op._flush(None)
+
 
             self._swap = False
 

@@ -374,10 +374,10 @@ class RecipeOrganizer(RecipeContainer):
 
         """
 
-        # If the function is an equation, we treat it special. This is required
-        # so that the objects observed by the root get observed if the Equation
-        # is used within another equation. It is assumed that a plain function
-        # is not observable.
+        # If the function is an equation, we treat it specially. This is
+        # required so that the objects observed by the root get observed if the
+        # Equation is used within another equation. It is assumed that a plain
+        # function is not observable.
         if isinstance(f, Equation):
             if name is None:
                 m = "Equation must be given a name"
@@ -462,6 +462,7 @@ class RecipeOrganizer(RecipeContainer):
         # Build the equation instance.
         eq = equationFromString(fstr, self._eqfactory, ns = ns, buildargs =
                 True)
+        eq.name = name
 
         # Register any new Parameters.
         for par in self._eqfactory.newargs:
@@ -525,6 +526,8 @@ class RecipeOrganizer(RecipeContainer):
             eq = equationFromString(con, self._eqfactory, ns)
         else:
             eq = Equation(root = con)
+
+        eq.name = "_constraint_%s"%par.name
 
         # Apply the constraint
         par.constrain(eq)
@@ -607,7 +610,7 @@ class RecipeOrganizer(RecipeContainer):
         self._restraints.add(res)
 
         # Our configuration changed. Notify observers.
-        self._flush(None)
+        self._flush(self)
 
         return res
 
@@ -621,7 +624,7 @@ class RecipeOrganizer(RecipeContainer):
             self._restraints.remove(res)
 
             # Our configuration changed
-            self._flush(None)
+            self._flush(self)
 
         return
 

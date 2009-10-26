@@ -241,6 +241,7 @@ class Profile(Observable):
         does nothing.
 
         """
+        self.ycalc = None
         self.notify()
         return
 

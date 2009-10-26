@@ -85,7 +85,7 @@ class Operator(Literal, OperatorABC):
         self._loopCheck(literal)
         self.args.append(literal)
         literal.addObserver(self._flush)
-        self._flush(None)
+        self._flush(self)
         return
 
     def getValue(self):

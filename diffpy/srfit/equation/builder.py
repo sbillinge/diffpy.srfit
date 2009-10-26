@@ -139,16 +139,9 @@ class EquationFactory(object):
         Returns a callable Literal representing the equation string.
 
         """
-        # If eqstr is the name of a builder, return the equation of its literal
-        if eqstr in self.builders:
-            builder = self.builders[eqstr]
-            root = builder.literal
-            name = "_eq_%s"%root.name
-            eq = Equation(name, root)
-        else:
-            self._prepareBuilders(eqstr, buildargs, argclass, argkw)
-            beq = eval(eqstr, self.builders)
-            eq = beq.getEquation()
+        self._prepareBuilders(eqstr, buildargs, argclass, argkw)
+        beq = eval(eqstr, self.builders)
+        eq = beq.getEquation()
         self.equations.add(eq)
         return eq
 
@@ -232,7 +225,7 @@ class EquationFactory(object):
             oldlit = oldbuilder.literal
             newlit = builder.literal
             if oldlit is not newlit:
-                for eq in tuple(self.equations):
+                for eq in self.equations:
                     eq.swap(oldlit, newlit)
 
         # Now store the new builder
@@ -407,7 +400,7 @@ class BaseBuilder(object):
         # Create the Operator
         op = OperatorClass()
 
-        # Reverse takes care of non-commutative operators, and assures that the
+        # onleft takes care of non-commutative operators, and assures that the
         # ordering is perserved.
         if onleft:
             # Add the literals to the operator

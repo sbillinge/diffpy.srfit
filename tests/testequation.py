@@ -137,6 +137,12 @@ class TestEquation(unittest.TestCase):
         self.assertTrue(v3 is eq.v3)
         self.assertTrue(v4 is eq.v4)
 
+        # Make sure the right messages get sent
+        v1.value = 0
+        self.assertTrue(root._value is None)
+        self.assertTrue(eq._value is None)
+        v1.value = 1
+
         self.assertEqual(20, eq()) # 20 = 2.5*(1+3)*(4-2)
         self.assertEqual(20, eq.getValue()) # same as above
         self.assertEqual(20, eq.value) # same as above

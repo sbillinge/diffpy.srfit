@@ -132,7 +132,7 @@ class ProfileGenerator(Operator, ParameterSet):
 
         self.profile = profile
         self.profile.addObserver(self._flush)
-        self._flush(None)
+        self._flush(self)
 
         self.processMetaData()
         return

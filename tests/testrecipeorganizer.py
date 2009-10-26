@@ -361,6 +361,9 @@ class TestRecipeOrganizer(unittest.TestCase):
 
         eq = self.m.registerFunction(g1, "g")
 
+        for p in eq.args:
+            self.assertTrue(p in self.m._parameters.values())
+
         x = numpy.arange(0.5, 10, 0.5)
         self.m.x.setValue(x)
         self.m.A.setValue(1.0)
@@ -399,6 +402,9 @@ class TestRecipeOrganizer(unittest.TestCase):
         # Make an equation.
         eq1 = self.m.registerStringFunction("x**2 + 3", "eq1")
         eq1.x.setValue(0)
+
+        for p in eq1.args:
+            self.assertTrue(p in self.m._parameters.values())
 
         # Add a parameter
         self.m._newParameter("y", 3.0)

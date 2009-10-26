@@ -22,6 +22,8 @@ holds the observed and calculated signals.
 See the examples in the documention for how to use a FitContribution.
 
 """
+# FIXME - observers are not being connected. Specifically, the _reseq is not
+# seeing _eq.
 
 from .parameterset import ParameterSet
 from .recipeorganizer import equationFromString
@@ -182,14 +184,15 @@ class FitContribution(ParameterSet):
         # Build the equation instance.
         eq = equationFromString(eqstr, self._eqfactory, buildargs = True, ns =
                 ns)
+        eq.name = "eq"
 
         # Register any new Parameters.
         for par in self._eqfactory.newargs:
             self._addParameter(par)
 
-        # Register the equation as a callable function
-        argnames = eq.argdict.keys()
-        self._eq = self.registerFunction(eq, "eq", argnames)
+        # Register eq as an operator
+        self._eqfactory.registerOperator("eq", eq)
+        self._eq = eq
 
         # Set the residual if we need to
         if self.profile is not None and self._reseq is None:

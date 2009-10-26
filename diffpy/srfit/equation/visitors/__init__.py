@@ -52,6 +52,7 @@ def validate(literal):
     """Validate a Literal tree.
 
     Raises ValueError if the tree contains errors.
+
     """
     v = Validator()
     errors = literal.identify(v)
