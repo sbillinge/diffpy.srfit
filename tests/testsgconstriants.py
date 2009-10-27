@@ -153,15 +153,15 @@ class TestSGConstraints(unittest.TestCase):
         for scatterer in parset.getScatterers()[::2]:
 
             self.assertTrue(scatterer.x.const or scatterer.y.const or
-                    scatterer.z.const or scatterer.x.constraint or
-                    scatterer.y.constraint or scatterer.z.constraint)
+                    scatterer.z.const or scatterer.x.constrained or
+                    scatterer.y.constrained or scatterer.z.constrained)
 
             self.assertTrue(scatterer.U11.const or scatterer.U22.const or
                     scatterer.U33.const or scatterer.U12.const or
                     scatterer.U13.const or scatterer.U23.const or
-                    scatterer.U11.constraint or scatterer.U22.constraint or
-                    scatterer.U33.constraint or scatterer.U12.constraint or
-                    scatterer.U13.constraint or scatterer.U23.constraint)
+                    scatterer.U11.constrained or scatterer.U22.constrained or
+                    scatterer.U33.constrained or scatterer.U12.constrained or
+                    scatterer.U13.constrained or scatterer.U23.constrained)
 
         return
 lamno3stru =\

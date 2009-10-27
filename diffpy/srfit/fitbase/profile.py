@@ -35,8 +35,6 @@ class ProfileParameter(Parameter):
 
     def getValue(self):
         """Get the value, even if it is None."""
-        if self.constraint is not None:
-            return self.constraint()
         return self._value
 
 # End class ProfileParameter

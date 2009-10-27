@@ -191,7 +191,7 @@ class SpaceGroupParameters(RecipeContainer):
             # that there is no confusion about what this function does.
             self.latpars = []
             for par in latpars:
-                if not par.const and par.constraint is None:
+                if not par.const and not par.constrained:
                     newpar = Parameter("sg_" + par.name, par.getValue())
                     self._addObject(newpar, self._parameters)
                     lattice.constrain(par, newpar)

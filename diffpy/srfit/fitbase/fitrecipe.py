@@ -18,10 +18,10 @@ FitRecipes organize FitContributions, variables, Restraints and Constraints to
 create a recipe of the system you wish to optimize. From the client's
 perspective, the FitRecipe is a residual calculator. The residual method does
 the work of updating variable values, which get propagated to the Parameters of
-the underlying FitContributions via the Varibles, Restraints and Constraints.
-This class needs no special knowledge of the type of FitContribution or data
-being used. Thus, it is suitable for combining residual equations from various
-types of refinements into a single residual.
+the underlying FitContributions via the varibles and Constraints.  This class
+needs no special knowledge of the type of FitContribution or data being used.
+Thus, it is suitable for combining residual equations from various types of
+refinements into a single residual.
 
 See the examples in the documentation for how to create an optimization problem
 using FitRecipe.
@@ -46,6 +46,8 @@ class FitRecipe(RecipeOrganizer):
     _constraints    --  A dictionary of Constraints, indexed by the constrained
                         Parameter. Constraints can be added using the
                         'constrain' method.
+    _oconstraints   --  An ordered list of the constraints from this and all
+                        sub-components.
     _calculators    --  A managed dictionary of Calculators.
     _contributions  --  A managed OrderedDict of FitContributions.
     _parameters     --  A managed OrderedDict of parameters (in this case the
@@ -72,6 +74,7 @@ class FitRecipe(RecipeOrganizer):
         RecipeOrganizer.__init__(self, name)
         self.fithook = FitHook()
         self._restraintlist = []
+        self._oconstraints = []
         self._ready = False
 
         self._weights = []
@@ -177,6 +180,11 @@ class FitRecipe(RecipeOrganizer):
         # Update the variable parameters.
         self.__applyValues(p)
 
+        # Update the constraints. These are ordered such that the list only
+        # needs to be cycled once.
+        for con in self._oconstraints:
+            con.update()
+
         # Calculate the bare chiv
         chiv = concatenate([ 
             sqrt(self._weights[i])*self._contributions.values()[i].residual() \
@@ -229,8 +237,8 @@ class FitRecipe(RecipeOrganizer):
         # Check parameters
         self.__verifyParameters()
 
-        # Update restraints. 
-        self.__collectRestraints()
+        # Update constraints and restraints. 
+        self.__collectConstraintsAndRestraints()
 
         self._ready = True
 
@@ -284,18 +292,63 @@ class FitRecipe(RecipeOrganizer):
 
         return
 
-    def __collectRestraints(self):
-        """Collect the Restraints from subobjects."""
+    def __collectConstraintsAndRestraints(self):
+        """Collect the Constraints and Restraints from subobjects."""
         rset = set(self._restraints)
+        cdict = {}
 
         for org in self._contributions.values() + self._parsets.values():
             rset.update( org._getRestraints() )
+            cdict.update( org._getConstraints() )
+        cdict.update(self._constraints)
 
         # The order of the restraint list does not matter
         self._restraintlist = list(rset)
 
-        return
+        # Reorder the constraints. Constraints are ordered such that a given
+        # constraint is placed before its dependencies.
+        self._oconstraints = cdict.values()
 
+        # Create a depth-1 map of the constraint dependencies
+        depmap = {}
+        for con in self._oconstraints:
+            depmap[con] = set()
+            # Now check the constraint's equation for constrained arguments
+            for arg in con.eq.args:
+                if arg in cdict:
+                    depmap[con].add( cdict[arg] )
+
+        # Turn the dependency map into multi-level map.
+        def _extendDeps(con):
+            deps = set(depmap[con])
+            for dep in depmap[con]:
+                deps.update(_extendDeps(dep))
+
+            return deps
+
+        for con in depmap:
+            depmap[con] = _extendDeps(con)
+
+        # Now sort the constraints based on the dependency map.
+        def cmp(x, y):
+            # x == y if neither of them have dependencies
+            if not depmap[x] and not depmap[y]:
+                return 0
+            # x > y if y is a dependency of x
+            # x > y if y has no dependencies
+            if y in depmap[x] or not depmap[y]:
+                return 1
+            # x < y if x is a dependency of y
+            # x < y if x has no dependencies
+            if x in depmap[y] or not depmap[x]:
+                return -1
+            # If there are dependencies, but there is no relationship, the
+            # constraints are equivalent
+            return 0
+
+        self._oconstraints.sort(cmp)
+
+        return
 
     # Variable manipulation
 
@@ -327,7 +380,7 @@ class FitRecipe(RecipeOrganizer):
         if par.const:
             raise ValueError("The parameter '%s' is constant"%par)
 
-        if par.constraint is not None:
+        if par.constrained:
             raise ValueError("The parameter '%s' is constrained"%par)
 
         var = ParameterProxy(name, par)
@@ -591,6 +644,11 @@ class FitRecipe(RecipeOrganizer):
         vars = [v for v in self._parameters.values() if v not in self._fixed]
         for var, pval in zip(vars, p):
             var.setValue(pval)
+        return
+
+    def _updateConfiguration(self):
+        """Notify RecipeContainers in hierarchy of configuration change."""
+        self._ready = False
         return
 
 

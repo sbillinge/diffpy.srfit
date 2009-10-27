@@ -17,8 +17,7 @@
 RecipeContainer is the base class for organizing Parameters, and other
 RecipeContainers.  RecipeOrganizer is an extended RecipeContainer that
 incorporates equation building, constraints and Restraints.  equationFromString
-creates an Equation instance from a string. It checks for specific conditions
-on the string, as defined in the method. 
+creates an Equation instance from a string.
 
 """
 
@@ -26,6 +25,7 @@ from numpy import inf
 from itertools import chain, ifilter
 import re
 
+from .constraint import Constraint
 from .restraint import Restraint
 from .parameter import Parameter
 
@@ -63,6 +63,8 @@ class RecipeContainer(Observable):
     _parameters     --  A managed OrderedDict of contained Parameters.
     __managed       --  A list of managed dictionaries. This is used for
                         attribute access, addition and removal.
+    _configobjs     --  A set of configurable objects that must know of
+                        configuration changes within this object.
 
     """
 
@@ -71,6 +73,7 @@ class RecipeContainer(Observable):
         validateName(name)
         self.name = name
         self._parameters = OrderedDict()
+        self._configobjs = set()
 
         self.__managed = []
         self._manage(self._parameters)
@@ -175,6 +178,10 @@ class RecipeContainer(Observable):
         # Observe the object
         obj.addObserver(self._flush)
 
+        # Store this as a configurable object
+        if hasattr(obj, "_updateConfiguration"):
+            self._configobjs.add(obj)
+
         return
 
     def _removeObject(self, obj, d):
@@ -234,6 +241,13 @@ class RecipeContainer(Observable):
         self.notify()
         return
 
+    def _updateConfiguration(self):
+        """Notify RecipeContainers in hierarchy of configuration change."""
+        for obj in self._configobjs:
+            obj._updateConfiguration()
+        return
+
+
 # End class RecipeContainer
 
 class RecipeOrganizer(RecipeContainer):
@@ -251,7 +265,9 @@ class RecipeOrganizer(RecipeContainer):
                         names.
     _calculators    --  A managed dictionary of Calculators, indexed by name.
     _parameters     --  A managed OrderedDict of contained Parameters.
-    _constraints    --  A set of constrained Parameters.
+    _constraints    --  A dictionary of Constraints, indexed by the constrained
+                        Parameter. Constraints can be added using the
+                        'constrain' method.
     _restraints     --  A set of Restraints. Restraints can be added using the
                         'restrain' or 'confine' methods.
     _eqfactory      --  A diffpy.srfit.equation.builder.EquationFactory
@@ -264,10 +280,10 @@ class RecipeOrganizer(RecipeContainer):
     def __init__(self, name):
         RecipeContainer.__init__(self, name)
         self._restraints = set()
-        self._constraints = set()
+        self._constraints = {}
         self._eqfactory = EquationFactory()
-        self._calculators = {}
 
+        self._calculators = {}
         self._manage(self._calculators)
         return
 
@@ -529,9 +545,13 @@ class RecipeOrganizer(RecipeContainer):
 
         eq.name = "_constraint_%s"%par.name
 
-        # Apply the constraint
-        par.constrain(eq)
-        self._constraints.add(par)
+        # Make and store the constraint
+        con = Constraint()
+        con.constrain(par, eq)
+        self._constraints[par] = con
+
+        # Our configuration changed
+        self._updateConfiguration()
 
         return
 
@@ -544,27 +564,28 @@ class RecipeOrganizer(RecipeContainer):
         Parameter is not constrained.
 
         """
-        par.unconstrain()
-        self._constraints.discard(par)
+        if par in self._constraints:
+            self._constraints[par].unconstrain()
+            del self._constraints[par]
+
+            # Our configuration changed
+            self._updateConfiguration()
+
         return
 
     def getConstrainedPars(self, recurse = False):
-        """Get a set of constrained managed Parameters in this object.
+        """Get a list of constrained managed Parameters in this object.
 
         recurse --  Recurse into managed objects and retrive their constrained
                     Parameters as well (default False).
 
         """
         const = self._getConstraints(recurse)
-        return const
+        return const.keys()
 
     def clearConstraints(self):
-        """Clear all constraints.
-
-        This unconstrains Parameters in this object only.
-        
-        """
-        for par in self._constraints:
+        """Clear all constraints."""
+        for par in self._parameters:
             self.unconstrain(par)
         return
 
@@ -610,7 +631,7 @@ class RecipeOrganizer(RecipeContainer):
         self._restraints.add(res)
 
         # Our configuration changed. Notify observers.
-        self._flush(self)
+        self._updateConfiguration()
 
         return res
 
@@ -624,7 +645,7 @@ class RecipeOrganizer(RecipeContainer):
             self._restraints.remove(res)
 
             # Our configuration changed
-            self._flush(self)
+            self._updateConfiguration()
 
         return
 
@@ -636,11 +657,13 @@ class RecipeOrganizer(RecipeContainer):
 
     def _getConstraints(self, recurse = True):
         """Get the constrained Parameters for this and managed sub-objects."""
-        constraints = set(self._constraints)
+        constraints = {}
         if recurse:
             f = lambda m : hasattr(m, "_getConstraints")
             for m in ifilter(f, self._iterManaged()):
                 constraints.update( m._getConstraints(recurse) )
+        
+        constraints.update( self._constraints)
 
         return constraints
 

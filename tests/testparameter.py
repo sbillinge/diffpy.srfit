@@ -33,37 +33,6 @@ class TestParameter(unittest.TestCase):
         self.assertAlmostEqual(1.01, l.value)
         return
 
-    def testConstraint(self):
-        """Test a constrained parameter."""
-        l = Parameter("l")
-        l.setValue(3.14)
-
-        from diffpy.srfit.equation.equationmod import Equation
-        l0 = Parameter("zero", 0)
-        constraint = Equation(root = l0)
-
-        self.assertAlmostEqual(3.14, l.getValue())
-
-        l.constrain(constraint)
-        self.assertTrue(l._value is None)
-        self.assertAlmostEqual(0, l.getValue())
-
-        l.unconstrain()
-        self.assertAlmostEqual(0, l.getValue())
-
-        # Constrain in a chain
-        l.value = 3.14
-        l2 = Parameter("l2", 1.23)
-        self.assertAlmostEquals(1.23, l2.value)
-        constraint2 = Equation(root = l)
-        l2.constrain(constraint2)
-        self.assertAlmostEquals(3.14, l2.value)
-        l.constrain(constraint)
-        self.assertAlmostEquals(0, l2.value)
-        self.assertAlmostEquals(0, l.value)
-
-        return
-
 class TestParameterProxy(unittest.TestCase):
 
     def testProxy(self):
@@ -84,27 +53,6 @@ class TestParameterProxy(unittest.TestCase):
         la.value = 3.2
         self.assertEqual(l.getValue(), la.getValue())
 
-        return
-
-    def testConstraint(self):
-        """Test a constrained parameter."""
-        l = Parameter("l", 3.14)
-        la = ParameterProxy("l2", l)
-
-        from diffpy.srfit.equation.equationmod import Equation
-        l0 = Parameter("zero", 0)
-        constraint = Equation(root = l0)
-
-        self.assertAlmostEqual(3.14, l.value)
-        self.assertAlmostEqual(3.14, la.getValue())
-
-        l.constrain(constraint)
-        self.assertAlmostEqual(0, l.getValue())
-        self.assertAlmostEqual(0, la.getValue())
-
-        la.unconstrain()
-        self.assertAlmostEqual(0, l.getValue())
-        self.assertAlmostEqual(0, la.getValue())
         return
 
 class TestParameterWrapper(unittest.TestCase):
@@ -146,28 +94,6 @@ class TestParameterWrapper(unittest.TestCase):
         la.setValue(3.2)
         self.assertEqual(l.getValue(), la.getValue())
 
-        return
-
-    def testConstraint(self):
-        """Test a constrained parameter."""
-        l = Parameter("l", 3.14)
-        la = ParameterWrapper("l", l, getter = Parameter.getValue, setter =
-                Parameter.setValue)
-
-        from diffpy.srfit.equation.equationmod import Equation
-        l0 = Parameter("zero", 0)
-        constraint = Equation(root = l0)
-
-        self.assertAlmostEqual(3.14, l.getValue())
-        self.assertAlmostEqual(3.14, la.getValue())
-
-        l.constrain(constraint)
-        self.assertAlmostEqual(0, l.getValue())
-        self.assertAlmostEqual(0, la.getValue())
-
-        la.unconstrain()
-        self.assertAlmostEqual(0, l.getValue())
-        self.assertAlmostEqual(0, la.getValue())
         return
 
 if __name__ == "__main__":

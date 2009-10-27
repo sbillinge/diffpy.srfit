@@ -207,15 +207,16 @@ class TestRecipeOrganizer(unittest.TestCase):
         p2 = self.m._newParameter("p2", 2)
         p3 = Parameter("p3", 3)
 
-        self.assertTrue(p1.constraint is None)
+        self.assertFalse(p1.constrained)
         self.assertEquals(0, len(self.m._constraints))
         self.m.constrain(p1, "2*p2")
 
-        self.assertTrue(p1.constraint is not None)
+        self.assertTrue(p1.constrained)
         self.assertTrue(p1 in self.m._constraints)
         self.assertEquals(1, len(self.m._constraints))
 
         p2.setValue(10)
+        self.m._constraints[p1].update()
         self.assertEquals(20, p1.getValue())
 
         # Check errors on unregistered parameters
@@ -224,12 +225,13 @@ class TestRecipeOrganizer(unittest.TestCase):
 
         # Remove the constraint
         self.m.unconstrain(p1)
-        self.assertTrue(p1.constraint is None)
+        self.assertFalse(p1.constrained)
         self.assertEquals(0, len(self.m._constraints))
 
         # Try an straight constraint
         self.m.constrain(p1, p2)
         p2.setValue(7)
+        self.m._constraints[p1].update()
         self.assertEquals(7, p1.getValue())
         return
 

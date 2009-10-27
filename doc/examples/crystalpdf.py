@@ -136,7 +136,7 @@ def plotResults(recipe):
 
     g = recipe.nickel.profile.y
     gcalc = recipe.nickel.profile.ycalc
-    diff = g - gcalc - 0.5 * max(g)
+    diff = g - gcalc - 0.8 * max(g)
 
     import pylab
     pylab.plot(r,g,'bo',label="G(r) Data")
@@ -157,7 +157,6 @@ if __name__ == "__main__":
 
     # Make the recipe
     recipe = makeRecipe(ciffile, data)
-    recipe.fithook.verbose = 3
 
     # Optimize
     scipyOptimize(recipe)

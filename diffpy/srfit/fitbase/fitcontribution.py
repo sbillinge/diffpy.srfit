@@ -22,8 +22,6 @@ holds the observed and calculated signals.
 See the examples in the documention for how to use a FitContribution.
 
 """
-# FIXME - observers are not being connected. Specifically, the _reseq is not
-# seeing _eq.
 
 from .parameterset import ParameterSet
 from .recipeorganizer import equationFromString
